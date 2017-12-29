@@ -15,13 +15,12 @@ void glCheckError_(int line) {
 		case GL_OUT_OF_MEMORY:                 sprintf_s(error, "GL_OUT_OF_MEMORY"); break;
 		case GL_INVALID_FRAMEBUFFER_OPERATION: sprintf_s(error, "GL_INVALID_FRAMEBUFFER_OPERATION"); break;
 		}
-		printf("Line is %d, glError: %s", line, error);
+		printf("Line is %d, glError: %s\n", line, error);
 	}
 }
 
-
 static const char VERTEX_SHADER[] =
-"#version 410\n"
+"#version 410 core\n"
 "uniform mat4 matrix;\n"
 "layout(location = 0) in vec4 position;\n"
 "layout(location = 1) in vec2 uvCoords;\n"
@@ -33,11 +32,10 @@ static const char VERTEX_SHADER[] =
 
 static const char FRAGMENT_SHADER[] =
 "#version 410 core\n"
-"uniform sampler2D texture;\n"
+"uniform sampler2D mytexture;\n"
 "in vec2 uvCoordsOut;\n"
-"out vec4 outputColor;\n"
 "void main() {\n"
-"	outputColor = texture(texture,uvCoordsOut);\n"
+"	gl_FragColor = texture(mytexture,uvCoordsOut);\n"
 "}\n";
 
 void addShader(int type, const char * source, int program) {
@@ -46,6 +44,9 @@ void addShader(int type, const char * source, int program) {
 	glCompileShader(shader);
 	GLint compiled = 0;
 	glGetShaderiv(shader, GL_COMPILE_STATUS, &compiled);
+    if (compiled != GL_TRUE) {
+        std::cout << "Failed to add shader." << std::endl;
+    }
 	glAttachShader(program, shader);
 	glDeleteShader(shader);
 }
@@ -66,10 +67,10 @@ bool GLHelper::init()
 		return false;
 	}
 
-	int windowPosX = 700;
+	int windowPosX = 100;
 	int windowPosY = 100;
-	pWindowWidth = 1280;
-	pWindowHeight = 720;
+	pWindowWidth = 640;
+	pWindowHeight = 360;
 
 	Uint32 windowFlags = SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN;
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
@@ -99,26 +100,17 @@ bool GLHelper::init()
 	}
 	glGetError();
 
-	glewExperimental = GL_TRUE;
-	if (glewInit() != GLEW_OK) {
-		std::cout << __FUNCTION__ << "- GLEW could not init! SDL Error: " << SDL_GetError() << std::endl;
-		return false;
-	}
-	glGetError();
 
-	/*if (SDL_GL_SetSwapInterval(0) < 0) {
+	if (SDL_GL_SetSwapInterval(0) < 0) {
 		std::cout << __FUNCTION__ << "- SDL could not swapInteval! SDL Error: " << SDL_GetError() << std::endl;
 		return false;
-	}*/
+	}
 
 	if (!setupMatrix()) {
 		std::cout << __FUNCTION__ << "- SetupCamera failed." << std::endl;
 		return false;
 	}
-	if (!setupScene()) {
-		std::cout << __FUNCTION__ << "- SetupScene failed." << std::endl;
-		return false;
-	}
+	
 	if (!setupGraphics()) {
 		std::cout << __FUNCTION__ << "- SetupGraphics failed." << std::endl;
 		return false;
@@ -127,6 +119,10 @@ bool GLHelper::init()
 		std::cout << __FUNCTION__ << "- SetupTexture failed." << std::endl;
 		return false;
 	}
+    if (!setupScene()) {
+        std::cout << __FUNCTION__ << "- SetupScene failed." << std::endl;
+        return false;
+    }
 	return true;
 }                 
 
@@ -134,18 +130,19 @@ bool GLHelper::setupMatrix()
 {
 	modelMatrix = glm::mat4(1.0f);
 
-	glm::vec3 cameraPosition(0, 0, 0);
-	glm::vec3 cameraLookintAt(0, 0, 1);
+	glm::vec3 cameraPosition(0, 0, 3);
+	glm::vec3 cameraLookintAt(0, 0, -1);
 	glm::vec3 cameraUp(0, 1, 0);
 	viewMatrix = glm::lookAt(cameraPosition, cameraLookintAt, cameraUp);
 
 	float aspect = pWindowWidth * 1.0f / pWindowHeight;
-	projectMatrix = glm::perspective(45.0f, aspect, 0.1f, 30.0f);
+	projectMatrix = glm::perspective(45.0f, aspect, 0.1f, 100.0f);
 	return true;
 }
 
 bool GLHelper::setupScene()
 {
+	glCheckError();
 	std::vector<float> vertexDatas;
 
 	addVertex(-1.0f, 1.0f, 0.0f, 1.0f, vertexDatas);
@@ -153,30 +150,27 @@ bool GLHelper::setupScene()
 	addVertex(1.0f, 1.0f, 1.0f, 1.0f, vertexDatas);
 	addVertex(1.0f, -1.0f, 1.0f, 0.0f, vertexDatas);
 
-	pVertexCount = vertexDatas.size() / 4;
-
+	pVertexCount = vertexDatas.size() / 5;
+	
 	glGenVertexArrays(1, &sceneVAO);
 	glBindVertexArray(sceneVAO);
-
+	glCheckError();
 	glGenBuffers(1, &sceneVertBuffer);
 	glBindBuffer(GL_ARRAY_BUFFER, sceneVertBuffer);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(float)*vertexDatas.size(), &vertexDatas[0], GL_STATIC_DRAW);
-
+	glCheckError();
 	glBindBuffer(GL_ARRAY_BUFFER, sceneVertBuffer);
-
-	int stride = 4;
+	glCheckError();
+	GLsizei stride = 4;
 	uintptr_t offset = 0;
 	glEnableVertexAttribArray(0);
-
 	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, stride, (const void *)offset);
-
+	glCheckError();
 	offset = 2;
 	glEnableVertexAttribArray(1);
 	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, stride, (const void *)offset);
-
+	glCheckError();
 	glBindVertexArray(0);
-	glDisableVertexAttribArray(0);
-	glDisableVertexAttribArray(1);
 	return true;
 }
 
@@ -198,7 +192,6 @@ bool GLHelper::setupGraphics() {
 		printf("Link sceneProgram failed.\n");
 		return false;
 	}
-
 	sceneMVPMatrixPointer = glGetUniformLocation(sceneProgramID, "matrix");
 	if (sceneMVPMatrixPointer == -1) {
 		return false;
@@ -209,10 +202,10 @@ bool GLHelper::setupGraphics() {
 bool GLHelper::setupTexture() {
 	glUseProgram(sceneProgramID);
 	glGenTextures(1, &sceneTextureID);
-	glActiveTexture(GL_TEXTURE0);
+    glUniform1i(glGetUniformLocation(sceneProgramID, "mytexture"), 0);
 	glBindTexture(GL_TEXTURE_2D, sceneTextureID);
 	glTexParameterf(GL_TEXTURE_2D,
-		GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+		GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameterf(GL_TEXTURE_2D,
 		GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glTexParameterf(GL_TEXTURE_2D,
@@ -220,21 +213,32 @@ bool GLHelper::setupTexture() {
 	glTexParameterf(GL_TEXTURE_2D,
 		GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 	glUseProgram(0);
+    glCheckError();
 	return true;
 }
 
 void GLHelper::drawFrame() {
+    glCheckError();
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glViewport(0, 0, pWindowWidth, pWindowHeight);
-	
+    computeMVPMatrix();
+    glCheckError();
 	glUseProgram(sceneProgramID);
-	glActiveTexture(GL_TEXTURE0);
+    glCheckError();
 	glBindTexture(GL_TEXTURE_2D, sceneTextureID);
-	computeMVPMatrix();
+    glCheckError();
 	glUniformMatrix4fv(sceneMVPMatrixPointer, 1, GL_FALSE, &mvpMatrix[0][0]);
-	glDrawArrays(GL_TRIANGLES, 0, pVertexCount);
+
+    glCheckError();
+    glBindVertexArray(sceneVAO);
+    glCheckError();
+	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+    glCheckError();
+    glBindVertexArray(0);
+    glCheckError();
 	SDL_GL_SwapWindow(pWindow);
+    glCheckError();
 }
 
 void GLHelper::destroy() {
@@ -245,11 +249,12 @@ void GLHelper::destroy() {
 
 bool GLHelper::setupTextureData(unsigned char *rgbData, int frameWidth, int frameHeight) {
 	glUseProgram(sceneProgramID);
-	glBindTexture(GL_TEXTURE_2D, sceneTextureID);
-	glActiveTexture(GL_TEXTURE0);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, frameWidth, frameHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, rgbData);
-	glGenerateMipmap(GL_TEXTURE_2D);
-
+    glCheckError();
+    glBindTexture(GL_TEXTURE_2D, sceneTextureID);
+    glCheckError();
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, frameWidth, frameHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, rgbData);
+    glCheckError();
+    glCheckError();
 	return true;
 }
 
@@ -273,8 +278,8 @@ void GLHelper::renderLoop() {
 	SDL_StartTextInput();
 	SDL_ShowCursor(SDL_DISABLE);
 	while (! bQuit) {
+        drawFrame();
 		bQuit = handleInput();
-		drawFrame();
 	}
 	SDL_StopTextInput();
 }

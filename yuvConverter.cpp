@@ -1,4 +1,10 @@
 #include "yuvConverter.h"
+static long int crv_tab[256];
+static long int cbu_tab[256];
+static long int cgu_tab[256];
+static long int cgv_tab[256];
+static long int tab_76309[256];
+static unsigned char clp[1024];
 void init_yuv420p_table() {
 	long int crv, cbu, cgu, cgv;
 	int i, ind;
@@ -106,3 +112,4 @@ void yuv420p_to_rgb24(unsigned char* yuvbuffer, unsigned char* rgbbuffer, int wi
 		py2 += width;
 	}
 }
+
