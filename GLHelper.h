@@ -12,6 +12,7 @@
 class GLHelper {
 public:
 	GLHelper();
+	GLHelper(int numberOfPatches);
 	~GLHelper();
 	bool init();
 	void destroy();
@@ -20,12 +21,15 @@ public:
 private:
 	bool setupGraphics();
 	bool setupTexture();
-	bool setupScene();
-	bool setupMatrix();
+	bool setupCoordinates();
+	bool setupMatrixes();
+	void setupProjectionMatrix();
 	void drawFrame();
 	bool handleInput();
+	void resizeWindow(SDL_Event& event);
 	void computeMVPMatrix();
 	void addVertex(float x, float y, float s, float t, std::vector<float> &vertexData);
+	void computeViewMatrixFromMouseInput();
 private:
 	SDL_Window *pWindow;
 	SDL_GLContext pContext;
@@ -36,12 +40,22 @@ private:
 	GLuint sceneProgramID;
 	GLuint sceneTextureID;
 	GLint sceneMVPMatrixPointer;
-	GLint sceneTexturePointer;
-	GLint scenePositionPointer;
 	GLuint sceneVAO;
 	GLuint sceneVertBuffer;
+	GLuint sceneUVBuffer;
 
+	int pPreviousXposition;
+	int pPreviousYposition;
+	int pCurrentXposition;
+	int pCurrentYposition;
 	int pWindowHeight;
 	int pWindowWidth;
 	int pVertexCount;
+	int pNumberOfPatches;
+
+	float lon;
+	float lat;
+
+	float *vertexCoordinates = NULL;
+	float *uvCoordinates = NULL;
 };

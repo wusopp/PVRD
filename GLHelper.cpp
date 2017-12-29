@@ -62,14 +62,28 @@ void addShader(int type, const char * source, int program) {
 	glDeleteShader(shader);
 }
 
-GLHelper::GLHelper():pWindow(NULL),pContext(NULL) {
+GLHelper::GLHelper():pWindow(NULL),pContext(NULL),pNumberOfPatches(64){
+	this->pVertexCount = 12288;
+	{
+		this->vertexCoordinates = new float[this->pVertexCount * 3 * sizeof(float)];
+	}
+	{
+		this->uvCoordinates = new float[this->pVertexCount * 2 * sizeof(float)];
+	}
+}
 
+GLHelper::GLHelper(int numberOfPatches) : pWindow(NULL), pContext(NULL) {
+	this->pNumberOfPatches = numberOfPatches;
+	this->pVertexCount = this->pNumberOfPatches * this->pNumberOfPatches * 3;
+	this->vertexCoordinates = new float[this->pVertexCount * 3 * sizeof(float)];
+	this->uvCoordinates = new float[this->pVertexCount * 2 * sizeof(float)];
 }
 
 GLHelper::~GLHelper() {
+	delete[] vertexCoordinates;
+	delete[] uvCoordinates;
 	destroy();
 }
-
 
 bool GLHelper::init()
 {
@@ -83,7 +97,7 @@ bool GLHelper::init()
 	pWindowWidth = 640;
 	pWindowHeight = 360;
 
-	Uint32 windowFlags = SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN;
+	Uint32 windowFlags = SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE;
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
@@ -111,13 +125,12 @@ bool GLHelper::init()
 	}
 	glGetError();
 
-
 	if (SDL_GL_SetSwapInterval(0) < 0) {
 		std::cout << __FUNCTION__ << "- SDL could not swapInteval! SDL Error: " << SDL_GetError() << std::endl;
 		return false;
 	}
 
-	if (!setupMatrix()) {
+	if (!setupMatrixes()) {
 		std::cout << __FUNCTION__ << "- SetupCamera failed." << std::endl;
 		return false;
 	}
@@ -130,56 +143,146 @@ bool GLHelper::init()
 		std::cout << __FUNCTION__ << "- SetupTexture failed." << std::endl;
 		return false;
 	}
-    if (!setupScene()) {
+    if (!setupCoordinates()) {
         std::cout << __FUNCTION__ << "- SetupScene failed." << std::endl;
         return false;
     }
 	return true;
 }                 
 
-bool GLHelper::setupMatrix()
+void GLHelper::computeViewMatrixFromMouseInput() {
+	int distanceX = pCurrentXposition - pPreviousXposition;
+	int distanceY = pCurrentYposition - pPreviousYposition;
+
+	float DRAG_FACTOR = 0.01;
+
+	lon = distanceX * DRAG_FACTOR + lon;
+	lat = -distanceY * DRAG_FACTOR + lat;
+
+	lat = fmax(-85, fmin(85, lat));
+
+	float phi = (float)glm::radians(90 - lat);
+	float theta = (float)glm::radians(lon);
+
+	float camera[3];
+	camera[0] = (float)(4 * sin(phi) * cos(theta));
+	camera[1] = (float)(4 * cos(phi));
+	camera[2] = (float)(4 * sin(phi) * sin(theta));
+
+	viewMatrix = glm::lookAt(glm::vec3(0, 0, 0), glm::vec3(camera[0], camera[1], camera[2]), glm::vec3(0, 1, 0));
+}
+
+bool GLHelper::setupMatrixes()
 {
 	modelMatrix = glm::mat4(1.0f);
 
-	glm::vec3 cameraPosition(0, 0, 3);
-	glm::vec3 cameraLookintAt(0, 0, -1);
+	glm::vec3 cameraPosition(0, 0, 0);
+	glm::vec3 cameraLookintAt(0, 0, 1);
 	glm::vec3 cameraUp(0, 1, 0);
 	viewMatrix = glm::lookAt(cameraPosition, cameraLookintAt, cameraUp);
 
-	float aspect = pWindowWidth * 1.0f / pWindowHeight;
-	projectMatrix = glm::perspective(45.0f, aspect, 0.1f, 100.0f);
+	setupProjectionMatrix();
+
+	computeMVPMatrix();
 	return true;
 }
 
-bool GLHelper::setupScene()
+void GLHelper::setupProjectionMatrix() {
+	float aspect = pWindowWidth * 1.0f / pWindowHeight;
+	projectMatrix = glm::perspective(45.0f, aspect, 0.1f, 40.0f);
+}
+
+bool GLHelper::setupCoordinates()
 {
 	glCheckError();
-	/*std::vector<float> vertexDatas;
+	int radius = 10;
+	int pieces = this->pNumberOfPatches;
+	int half_pieces = this->pNumberOfPatches / 2;
+	double step_z = M_PI / (half_pieces);
+	double step_xy = step_z;
+	double angle_z;
+	double angle_xy;
+	float z[4] = { 0.0f };
+	float x[4] = { 0.0f };
+	float y[4] = { 0.0f };
+	float u[4] = { 0.0f };
+	float v[4] = { 0.0f };
+	int m = 0, n = 0;
+	for (int i = 0; i < half_pieces; i++) {
+		angle_z = i * step_z;
+		for (int j = 0; j < pieces; j++) {
+			angle_xy = j * step_xy;
+			z[0] = (float)(radius * sin(angle_z)*cos(angle_xy));
+			x[0] = (float)(radius*sin(angle_z)*sin(angle_xy));
+			y[0] = (float)(radius*cos(angle_z));
+			u[0] = (float)j / pieces;
+			v[0] = (float)i / half_pieces;
+			z[1] = (float)(radius*sin(angle_z + step_z)*cos(angle_xy));
+			x[1] = (float)(radius*sin(angle_z + step_z)*sin(angle_xy));
+			y[1] = (float)(radius*cos(angle_z + step_z));
+			u[1] = (float)j / pieces;
+			v[1] = (float)(i + 1) / half_pieces;
+			z[2] = (float)(radius*sin(angle_z + step_z)*cos(angle_xy + step_xy));
+			x[2] = (float)(radius *sin(angle_z + step_z)*sin(angle_xy + step_xy));
+			y[2] = (float)(radius*cos(angle_z + step_z));
+			u[2] = (float)(j + 1) / pieces;
+			v[2] = (float)(i + 1) / half_pieces;
+			z[3] = (float)(radius*sin(angle_z)*cos(angle_xy + step_xy));
+			x[3] = (float)(radius*sin(angle_z)*sin(angle_xy + step_xy));
+			y[3] = (float)(radius*cos(angle_z));
+			u[3] = (float)(j + 1) / pieces;
+			v[3] = (float)i / half_pieces;
+			this->vertexCoordinates[m++] = x[0];
+			this->vertexCoordinates[m++] = y[0];
+			this->vertexCoordinates[m++] = z[0];
+			this->uvCoordinates[n++] = u[0];
+			this->uvCoordinates[n++] = v[0];
+			this->vertexCoordinates[m++] = x[1];
+			this->vertexCoordinates[m++] = y[1];
+			this->vertexCoordinates[m++] = z[1];
+			this->uvCoordinates[n++] = u[1];
+			this->uvCoordinates[n++] = v[1];
+			this->vertexCoordinates[m++] = x[2];
+			this->vertexCoordinates[m++] = y[2];
+			this->vertexCoordinates[m++] = z[2];
+			this->uvCoordinates[n++] = u[2];
+			this->uvCoordinates[n++] = v[2];
+			this->vertexCoordinates[m++] = x[2];
+			this->vertexCoordinates[m++] = y[2];
+			this->vertexCoordinates[m++] = z[2];
+			this->uvCoordinates[n++] = u[2];
+			this->uvCoordinates[n++] = v[2];
+			this->vertexCoordinates[m++] = x[3];
+			this->vertexCoordinates[m++] = y[3];
+			this->vertexCoordinates[m++] = z[3];
+			this->uvCoordinates[n++] = u[3];
+			this->uvCoordinates[n++] = v[3];
+			this->vertexCoordinates[m++] = x[0];
+			this->vertexCoordinates[m++] = y[0];
+			this->vertexCoordinates[m++] = z[0];
+			this->uvCoordinates[n++] = u[0];
+			this->uvCoordinates[n++] = v[0];
+		}
+	}
 
-	addVertex(-1.0f, 1.0f, 0.0f, 1.0f, vertexDatas);
-	addVertex(-1.0f, -1.0f, 0.0f, 0.0f, vertexDatas);
-	addVertex(1.0f, 1.0f, 1.0f, 1.0f, vertexDatas);
-	addVertex(1.0f, -1.0f, 1.0f, 0.0f, vertexDatas);
-
-	pVertexCount = vertexDatas.size() / 4;*/
 
 
 	glGenVertexArrays(1, &sceneVAO);
 	glBindVertexArray(sceneVAO);
-	glCheckError();
+	
+	int vertexSize = this->pVertexCount * 3 * sizeof(float);
+	int uvSize = this->pVertexCount * 2 * sizeof(float);
+
 	glGenBuffers(1, &sceneVertBuffer);
-	glBindBuffer(GL_ARRAY_BUFFER, sceneVertBuffer);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(quadData),quadData, GL_STATIC_DRAW);
-	glCheckError();
-	glBindBuffer(GL_ARRAY_BUFFER, sceneVertBuffer);
-	glCheckError();
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 0, (const void *)0);
-	glCheckError();
-	glEnableVertexAttribArray(1);
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, (const void *)(16 * sizeof(float)));
-	glCheckError();
+	glBindBuffer(GL_ARRAY_BUFFER, sceneVertBuffer);	
+	glBufferData(GL_ARRAY_BUFFER, vertexSize, this->vertexCoordinates, GL_STATIC_DRAW);
+
+	glGenBuffers(1, &sceneUVBuffer);
+	glBindBuffer(GL_ARRAY_BUFFER, sceneUVBuffer);
+	glBufferData(GL_ARRAY_BUFFER, uvSize, this->uvCoordinates, GL_STATIC_DRAW);
+
 	glBindVertexArray(0);
+	glCheckError();
 	return true;
 }
 
@@ -233,7 +336,6 @@ void GLHelper::drawFrame() {
 	glDisable(GL_DEPTH_TEST);
 
     computeMVPMatrix();
-
 	glUseProgram(sceneProgramID);
 
 	glBindTexture(GL_TEXTURE_2D, sceneTextureID);
@@ -242,10 +344,16 @@ void GLHelper::drawFrame() {
 	glUniformMatrix4fv(sceneMVPMatrixPointer, 1, GL_FALSE,&mvpMatrix[0][0]);
 
     glBindVertexArray(sceneVAO);
+	
+	glBindBuffer(GL_ARRAY_BUFFER, sceneVertBuffer);
 	glEnableVertexAttribArray(0);
-	glEnableVertexAttribArray(1);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (const void *)0);
 
-	glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+	glBindBuffer(GL_ARRAY_BUFFER, sceneUVBuffer);
+	glEnableVertexAttribArray(1);
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, (const void *)0);
+
+	glDrawArrays(GL_TRIANGLES, 0, this->pVertexCount);
     glBindVertexArray(0);
 	SDL_GL_SwapWindow(pWindow);
     glCheckError();
@@ -270,6 +378,7 @@ bool GLHelper::setupTextureData(unsigned char *rgbData, int frameWidth, int fram
 bool GLHelper::handleInput() {
 	SDL_Event event;
 	bool willExit = false;
+	static bool isMouseSelected = false;
 	while (SDL_PollEvent(&event) != 0) {
 		if (event.type == SDL_QUIT) {
 			willExit = true;
@@ -277,15 +386,40 @@ bool GLHelper::handleInput() {
 			if (event.key.keysym.sym == SDLK_ESCAPE || event.key.keysym.sym == SDLK_q) {
 				willExit = true;
 			}
+		} else if (event.type == SDL_MOUSEMOTION) {
+			if (isMouseSelected) {
+				SDL_GetMouseState(&pCurrentXposition, &pCurrentYposition);
+				computeViewMatrixFromMouseInput();
+			} 
+		}
+		else if (event.type == SDL_MOUSEBUTTONDOWN) {
+			isMouseSelected = true;
+			SDL_GetMouseState(&pPreviousXposition, &pPreviousYposition);
+		}
+		else if (event.type == SDL_MOUSEBUTTONUP) {
+			isMouseSelected = false;
+		}
+		else if (event.type == SDL_WINDOWEVENT) {
+			if (event.window.event == SDL_WINDOWEVENT_RESIZED) {
+				resizeWindow(event);
+			}
 		}
 	}
 	return willExit;
 }
 
+void GLHelper::resizeWindow(SDL_Event& event) {
+	pWindowWidth = event.window.data1;
+	pWindowHeight = event.window.data2;
+	setupProjectionMatrix();
+	computeMVPMatrix();
+}
+
 void GLHelper::renderLoop() {
+
 	bool bQuit = false;
 	SDL_StartTextInput();
-	SDL_ShowCursor(SDL_DISABLE);
+	
 	while (! bQuit) {
         drawFrame();
 		bQuit = handleInput();
@@ -295,8 +429,7 @@ void GLHelper::renderLoop() {
 
 void GLHelper::computeMVPMatrix()
 {
-	//mvpMatrix = projectMatrix * viewMatrix * modelMatrix;
-	mvpMatrix = glm::mat4(1.0);
+	mvpMatrix = projectMatrix * viewMatrix * modelMatrix;
 }
 
 void GLHelper::addVertex(float x, float y, float s, float t, std::vector<float> &vertexData) {
