@@ -1,4 +1,4 @@
-﻿生成启动时间为 2017/12/29 10:13:48。
+﻿生成启动时间为 2017/12/29 10:22:12。
      1>项目“C:\Users\Oprah\Desktop\DisplayCPP\DisplayCPP\DisplayCPP.vcxproj”在节点 2 上(Build 个目标)。
      1>ClCompile:
          C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\bin\CL.exe /c /I"C:\Users\Oprah\Desktop\DisplayCPP\glew-1.11.0\include\GL" /IC:\Users\Oprah\Desktop\DisplayCPP\glm /I"C:\Users\Oprah\Desktop\DisplayCPP\sdl2-2.0.3\include" /ZI /nologo /W3 /WX- /sdl /Od /Oy- /D WIN32 /D _DEBUG /D _CONSOLE /D _UNICODE /D UNICODE /Gm /EHsc /RTC1 /MTd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /Fo"Debug\\" /Fd"Debug\vc140.pdb" /Gd /TP /analyze- /errorReport:prompt /D _CRT_SECURE_NO_WARNINGS GLHelper.cpp
@@ -13,4 +13,4 @@
 
 已成功生成。
 
-已用时间 00:00:02.12
+已用时间 00:00:02.18

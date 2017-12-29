@@ -43,10 +43,10 @@ static const GLfloat quadData[] = {
 	1.0f,-1.0f,0.0f,1.0f,
 	1.0f,1.0f,0.0f,1.0f,
 	-1.0f,1.0f,0.0f,1.0f,
-	0.0f,0.0f,
-	1.0f,0.0f,
+	0.0f,1.0f,
 	1.0f,1.0f,
-	0.0f,1.0f
+	1.0f,0.0f,
+	0.0f,0.0f
 };
 
 void addShader(int type, const char * source, int program) {
@@ -232,21 +232,14 @@ void GLHelper::drawFrame() {
 	glViewport(0, 0, pWindowWidth, pWindowHeight);
 	glDisable(GL_DEPTH_TEST);
 
-	glFrontFace(GL_CCW);
     computeMVPMatrix();
 
 	glUseProgram(sceneProgramID);
 
 	glBindTexture(GL_TEXTURE_2D, sceneTextureID);
     glCheckError();
-	
-	float mat[16] = { 0.0f };
-	const float *psrc = (const float*)glm::value_ptr(mvpMatrix);
-	for (int i = 0; i < 16; i++) {
-		mat[i] = psrc[i];
-	}
 
-	glUniformMatrix4fv(sceneMVPMatrixPointer, 1, GL_FALSE,mat);
+	glUniformMatrix4fv(sceneMVPMatrixPointer, 1, GL_FALSE,&mvpMatrix[0][0]);
 
     glBindVertexArray(sceneVAO);
 	glEnableVertexAttribArray(0);

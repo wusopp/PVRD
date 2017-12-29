@@ -9,10 +9,6 @@ void readDataFromFile(const char *fileName, unsigned char *yuvData, int frameWid
     FILE *pf = fopen(fileName, "rb+");
     fread(yuvData, 1, size, pf);
     fclose(pf);
-    /*FILE *fp = fopen("out.yuv", "ab+");
-    fwrite(yuvData, 1, size, fp);
-    fflush(fp);
-    fclose(fp);*/
 	return;
 }
 
