@@ -137,11 +137,10 @@ int main(int argv, char** args) {
 		std::cout << __FUNCTION__ << " - Failed to allocate memory fro RGB data." << std::endl;
 		return 0;
 	}
-	readDataFromFile("cpp.yuv", yuvData,frameWidth, frameHeight);
+	readDataFromFile("line.yuv", yuvData,frameWidth, frameHeight);
 	convertYUV2RGB(yuvData, rgbData, frameWidth, frameHeight);
 	helper->setupTextureData(rgbData, frameWidth, frameHeight);
 	helper->renderLoop();
-
 	free(yuvData);
 	free(rgbData);
     delete helper;

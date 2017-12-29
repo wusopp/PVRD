@@ -38,6 +38,17 @@ static const char FRAGMENT_SHADER[] =
 "	gl_FragColor = texture(mytexture,uvCoordsOut);\n"
 "}\n";
 
+static const GLfloat quadData[] = {
+	-1.0f,-1.0f,0.0f,1.0f,
+	1.0f,-1.0f,0.0f,1.0f,
+	1.0f,1.0f,0.0f,1.0f,
+	-1.0f,1.0f,0.0f,1.0f,
+	0.0f,0.0f,
+	1.0f,0.0f,
+	1.0f,1.0f,
+	0.0f,1.0f
+};
+
 void addShader(int type, const char * source, int program) {
 	int shader = glCreateShader(type);
 	glShaderSource(shader, 1, &source, NULL);
@@ -56,7 +67,7 @@ GLHelper::GLHelper():pWindow(NULL),pContext(NULL) {
 }
 
 GLHelper::~GLHelper() {
-
+	destroy();
 }
 
 
@@ -143,32 +154,30 @@ bool GLHelper::setupMatrix()
 bool GLHelper::setupScene()
 {
 	glCheckError();
-	std::vector<float> vertexDatas;
+	/*std::vector<float> vertexDatas;
 
 	addVertex(-1.0f, 1.0f, 0.0f, 1.0f, vertexDatas);
 	addVertex(-1.0f, -1.0f, 0.0f, 0.0f, vertexDatas);
 	addVertex(1.0f, 1.0f, 1.0f, 1.0f, vertexDatas);
 	addVertex(1.0f, -1.0f, 1.0f, 0.0f, vertexDatas);
 
-	pVertexCount = vertexDatas.size() / 5;
-	
+	pVertexCount = vertexDatas.size() / 4;*/
+
+
 	glGenVertexArrays(1, &sceneVAO);
 	glBindVertexArray(sceneVAO);
 	glCheckError();
 	glGenBuffers(1, &sceneVertBuffer);
 	glBindBuffer(GL_ARRAY_BUFFER, sceneVertBuffer);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(float)*vertexDatas.size(), &vertexDatas[0], GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(quadData),quadData, GL_STATIC_DRAW);
 	glCheckError();
 	glBindBuffer(GL_ARRAY_BUFFER, sceneVertBuffer);
 	glCheckError();
-	GLsizei stride = 4;
-	uintptr_t offset = 0;
 	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, stride, (const void *)offset);
+	glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 0, (const void *)0);
 	glCheckError();
-	offset = 2;
 	glEnableVertexAttribArray(1);
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, stride, (const void *)offset);
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, (const void *)(16 * sizeof(float)));
 	glCheckError();
 	glBindVertexArray(0);
 	return true;
@@ -218,25 +227,33 @@ bool GLHelper::setupTexture() {
 }
 
 void GLHelper::drawFrame() {
-    glCheckError();
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glViewport(0, 0, pWindowWidth, pWindowHeight);
+	glDisable(GL_DEPTH_TEST);
+
+	glFrontFace(GL_CCW);
     computeMVPMatrix();
-    glCheckError();
+
 	glUseProgram(sceneProgramID);
-    glCheckError();
+
 	glBindTexture(GL_TEXTURE_2D, sceneTextureID);
     glCheckError();
-	glUniformMatrix4fv(sceneMVPMatrixPointer, 1, GL_FALSE, &mvpMatrix[0][0]);
+	
+	float mat[16] = { 0.0f };
+	const float *psrc = (const float*)glm::value_ptr(mvpMatrix);
+	for (int i = 0; i < 16; i++) {
+		mat[i] = psrc[i];
+	}
 
-    glCheckError();
+	glUniformMatrix4fv(sceneMVPMatrixPointer, 1, GL_FALSE,mat);
+
     glBindVertexArray(sceneVAO);
-    glCheckError();
-	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-    glCheckError();
+	glEnableVertexAttribArray(0);
+	glEnableVertexAttribArray(1);
+
+	glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
     glBindVertexArray(0);
-    glCheckError();
 	SDL_GL_SwapWindow(pWindow);
     glCheckError();
 }
@@ -253,7 +270,6 @@ bool GLHelper::setupTextureData(unsigned char *rgbData, int frameWidth, int fram
     glBindTexture(GL_TEXTURE_2D, sceneTextureID);
     glCheckError();
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, frameWidth, frameHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, rgbData);
-    glCheckError();
     glCheckError();
 	return true;
 }
@@ -286,7 +302,8 @@ void GLHelper::renderLoop() {
 
 void GLHelper::computeMVPMatrix()
 {
-	mvpMatrix = projectMatrix * viewMatrix * modelMatrix;
+	//mvpMatrix = projectMatrix * viewMatrix * modelMatrix;
+	mvpMatrix = glm::mat4(1.0);
 }
 
 void GLHelper::addVertex(float x, float y, float s, float t, std::vector<float> &vertexData) {
