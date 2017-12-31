@@ -118,7 +118,7 @@ void YV12ToBGR24_Native(uint8_t* pYUV, uint8_t* pBGR24, int width, int height) {
 }
 
 int main(int argv, char** args) {
-	GLHelper *helper = new GLHelper;
+	GLHelper *helper = new GLHelper(512);
 	helper->init();
 	
 	int frameHeight = 1920;

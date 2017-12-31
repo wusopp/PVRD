@@ -1,5 +1,6 @@
 #pragma once
 #include "GL/glew.h"
+#include <Windows.h>
 #include <iostream>
 #include <stdio.h>
 #include <SDL.h>
@@ -9,6 +10,44 @@
 #include "gtc/matrix_transform.hpp"
 #include "gtc/constants.hpp"
 #include <vector>
+
+class CStopwatch {
+public:
+    CStopwatch() {
+        QueryPerformanceFrequency(&freq);
+    }
+
+    void Start() {
+        QueryPerformanceCounter(&start);
+    }
+
+    // 返回从Start()开始到Now()之间经过的时间，以毫秒(ms)为单位
+    __int64 elapsedMillionSecondsSinceStart() {
+        LARGE_INTEGER now;
+        QueryPerformanceCounter(&now);
+        return (((now.QuadPart - start.QuadPart) * 1000) / freq.QuadPart);
+    }
+
+    __int64 elapsedMicroSecondsSinceStart() {
+        LARGE_INTEGER now;
+        QueryPerformanceCounter(&now);
+        return ((now.QuadPart - start.QuadPart) * 1000000 / freq.QuadPart);
+    }
+
+    _int64 elapsedTimeInMillionSeconds(void (*func)()) {
+        QueryPerformanceCounter(&start);
+        func();
+        LARGE_INTEGER now;
+        QueryPerformanceCounter(&now);
+        return (((now.QuadPart - start.QuadPart) * 1000) / freq.QuadPart);
+    }
+
+private:
+    LARGE_INTEGER freq;
+    LARGE_INTEGER start;
+};
+
+
 class GLHelper {
 public:
 	GLHelper();
@@ -19,17 +58,17 @@ public:
 	bool setupTextureData(unsigned char *rgbData, int frameWidth, int frameHeight);
 	void renderLoop();
 private:
-	bool setupGraphics();
+	bool setupShaders();
 	bool setupTexture();
-	bool setupCoordinates();
+	bool setupSphereCoordinates();
+	bool setupCppCoordinates();
 	bool setupMatrixes();
 	void setupProjectionMatrix();
 	void drawFrame();
 	bool handleInput();
 	void resizeWindow(SDL_Event& event);
 	void computeMVPMatrix();
-	void addVertex(float x, float y, float s, float t, std::vector<float> &vertexData);
-	void computeViewMatrixFromMouseInput();
+	void computeViewMatrix();
 private:
 	SDL_Window *pWindow;
 	SDL_GLContext pContext;
@@ -58,4 +97,6 @@ private:
 
 	float *vertexCoordinates = NULL;
 	float *uvCoordinates = NULL;
+
+    CStopwatch *watch;
 };
