@@ -1,5 +1,5 @@
 #pragma once
-#include "GL/glew.h"
+#include "glew.h"
 #include <Windows.h>
 #include <iostream>
 #include <stdio.h>
@@ -56,21 +56,23 @@ public:
 	bool init();
 	void destroy();
 	bool setupTextureData(unsigned char *rgbData, int frameWidth, int frameHeight);
+    bool setupCppCoordinates(int frameWidth, int frameHeight);
 	void renderLoop();
 private:
 	bool setupShaders();
 	bool setupTexture();
 	bool setupSphereCoordinates();
-	bool setupCppCoordinates();
+	
 	bool setupMatrixes();
 	void setupProjectionMatrix();
 	void drawFrame();
+    void drawFrameCpp();
 	bool handleInput();
 	void resizeWindow(SDL_Event& event);
 	void computeMVPMatrix();
 	void computeViewMatrix();
 private:
-	SDL_Window *pWindow;
+    SDL_Window *pWindow = NULL;
 	SDL_GLContext pContext;
 	glm::mat4 modelMatrix;
 	glm::mat4 viewMatrix;
@@ -97,6 +99,8 @@ private:
 
 	float *vertexCoordinates = NULL;
 	float *uvCoordinates = NULL;
+    std::vector<double> vertexVector;
+    std::vector<double> uvVector;
 
-    CStopwatch *watch;
+    CStopwatch *watch = NULL;
 };

@@ -1,5 +1,5 @@
 #include "GLHelper.h"
-
+#include <math.h>
 #define glCheckError() glCheckError_(__LINE__)
 
 void glCheckError_(int line) {
@@ -62,26 +62,29 @@ void addShader(int type, const char * source, int program) {
     glDeleteShader(shader);
 }
 
-GLHelper::GLHelper() :pWindow(NULL), pContext(NULL), pNumberOfPatches(64),watch(new CStopwatch()) {
-    this->pVertexCount = 12288;
-    {
-        this->vertexCoordinates = new float[this->pVertexCount * 3 * sizeof(float)];
-    }
-    {
-        this->uvCoordinates = new float[this->pVertexCount * 2 * sizeof(float)];
-    }
+GLHelper::GLHelper() :
+    pWindow(NULL), 
+    pContext(NULL), 
+    pNumberOfPatches(64),
+    watch(new CStopwatch()) {
 }
 
-GLHelper::GLHelper(int numberOfPatches) : pWindow(NULL), pContext(NULL), watch(new CStopwatch()) {
+GLHelper::GLHelper(int numberOfPatches) : 
+    pWindow(NULL), 
+    pContext(NULL), 
+    watch(new CStopwatch()) {
     this->pNumberOfPatches = numberOfPatches;
-    this->pVertexCount = this->pNumberOfPatches * this->pNumberOfPatches * 3;
-    this->vertexCoordinates = new float[this->pVertexCount * 3 * sizeof(float)];
-    this->uvCoordinates = new float[this->pVertexCount * 2 * sizeof(float)];
 }
 
 GLHelper::~GLHelper() {
-    delete[] vertexCoordinates;
-    delete[] uvCoordinates;
+    if (vertexCoordinates != NULL) {
+        delete[] vertexCoordinates;
+        vertexCoordinates = NULL;
+    }
+    if (uvCoordinates != NULL) {
+        delete[] uvCoordinates;
+        uvCoordinates = NULL;
+    }
     destroy();
 }
 
@@ -180,7 +183,6 @@ bool GLHelper::setupMatrixes() {
     viewMatrix = glm::lookAt(cameraPosition, cameraLookintAt, cameraUp);
 
     setupProjectionMatrix();
-
     computeMVPMatrix();
     return true;
 }
@@ -192,6 +194,10 @@ void GLHelper::setupProjectionMatrix() {
 
 bool GLHelper::setupSphereCoordinates() {
     glCheckError();
+    this->pVertexCount = this->pNumberOfPatches * this->pNumberOfPatches * 3;
+    this->vertexCoordinates = new float[this->pVertexCount * 3 * sizeof(float)];
+    this->uvCoordinates = new float[this->pVertexCount * 2 * sizeof(float)];
+
     int radius = 10;
     int pieces = this->pNumberOfPatches;
     int half_pieces = this->pNumberOfPatches / 2;
@@ -283,8 +289,79 @@ bool GLHelper::setupSphereCoordinates() {
     return true;
 }
 
-bool GLHelper::setupCppCoordinates() {
-    return false;
+// http://www.progonos.com/furuti/MapProj/Normal/CartHow/HowCPar/howCPar.html
+void computeSTCoordinates(double x, double y, double &s, double &t, double radius) {
+
+    double phi = 3 * asin(y / (sqrt(3 * M_PI)*radius));
+    double theta = x / (sqrt(3 / M_PI)*radius*(2 * cos(2 * phi / 3) - 1));
+
+    // theta的取值范围是-pi~pi,phi的取值范围是-pi/2~pi/2,要把他们归一化到[0,1]中
+    s = ((theta + M_PI) / (2 * M_PI));
+    t = ((phi + M_PI / 2) / M_PI);
+    return;
+}
+
+bool GLHelper::setupCppCoordinates(int frameWidth,int frameHeight) {
+    // 让y均匀变化，然后根据椭圆的方程解出x，然后根据x、y与经纬度的关系解出经纬度
+    // x = 2H - 2/H * y * y;
+
+    int H = frameHeight / 2;
+    float R = 2 * H / (float)(sqrt(3 * M_PI));
+    double slope = 2.0f / H;
+    double s, t, x, y;
+    // 第一象限和第二象限
+    for (y = 0; y < 1920; y += 40.0f) {
+        x = 2 * H - slope*y*y;
+        vertexVector.push_back(x);
+        vertexVector.push_back(y);
+        computeSTCoordinates(x, y, s, t, R);
+        uvVector.push_back(s);
+        uvVector.push_back(t);
+
+        x = -x;
+        vertexVector.push_back(x);
+        vertexVector.push_back(y);
+        s = 1.0f - s;
+        uvVector.push_back(s);
+        uvVector.push_back(t);
+    }
+
+    // 第三象限和第四象限
+    for (y = 0; y > -1920; y -= 40.0f) {
+        x = slope * y * y - 2 * H;
+        vertexVector.push_back(x);
+        vertexVector.push_back(y);
+        computeSTCoordinates(x, y, s, t, R);
+        uvVector.push_back(s);
+        uvVector.push_back(t);
+
+        x = -x;
+        vertexVector.push_back(x);
+        vertexVector.push_back(y);
+        s = 1.0f - s;
+        uvVector.push_back(s);
+        uvVector.push_back(t);
+    }
+
+    pVertexCount = vertexVector.size() / 2;
+
+    glGenVertexArrays(1, &sceneVAO);
+    glBindVertexArray(sceneVAO);
+
+    int vertexSize = vertexVector.size()*sizeof(float);
+    int uvSize = uvVector.size() * sizeof(float);
+
+    glGenBuffers(1, &sceneVertBuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, sceneVertBuffer);
+    glBufferData(GL_ARRAY_BUFFER, vertexSize, &this->vertexVector[0], GL_STATIC_DRAW);
+
+    glGenBuffers(1, &sceneUVBuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, sceneUVBuffer);
+    glBufferData(GL_ARRAY_BUFFER, uvSize, &this->uvVector[0], GL_STATIC_DRAW);
+
+    glBindVertexArray(0);
+    glCheckError();
+    return true;
 }
 
 bool GLHelper::setupShaders() {
@@ -328,6 +405,36 @@ bool GLHelper::setupTexture() {
     glUseProgram(0);
     glCheckError();
     return true;
+}
+
+void GLHelper::drawFrameCpp() {
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glViewport(0, 0, pWindowWidth, pWindowHeight);
+    glDisable(GL_DEPTH_TEST);
+
+    computeMVPMatrix();
+    glUseProgram(sceneProgramID);
+
+    glBindTexture(GL_TEXTURE_2D, sceneTextureID);
+    glCheckError();
+
+    glUniformMatrix4fv(sceneMVPMatrixPointer, 1, GL_FALSE, &mvpMatrix[0][0]);
+
+    glBindVertexArray(sceneVAO);
+
+    glBindBuffer(GL_ARRAY_BUFFER, sceneVertBuffer);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, (const void *)0);
+
+    glBindBuffer(GL_ARRAY_BUFFER, sceneUVBuffer);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, (const void *)0);
+
+    glDrawArrays(GL_POINTS, 0, this->pVertexCount);
+    glBindVertexArray(0);
+    SDL_GL_SwapWindow(pWindow);
+    glCheckError();
 }
 
 void GLHelper::drawFrame() {
@@ -421,8 +528,9 @@ void GLHelper::renderLoop() {
     while (!bQuit) {
         watch->Start();
         drawFrame();
+        //drawFrameCpp();
         __int64 time = watch->elapsedMicroSecondsSinceStart();
-        std::cout << "frameIndex: " << frameIndex << ", renderFrame costs " << time << " us." << std::endl;
+        //std::cout << "frameIndex: " << frameIndex << ", renderFrame costs " << time << " us." << std::endl;
         frameIndex++;
         bQuit = handleInput();
     }

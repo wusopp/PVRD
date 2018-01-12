@@ -89,14 +89,14 @@
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>C:\Users\Oprah\Desktop\DisplayCPP\glew-1.11.0\include\GL;C:\Users\Oprah\Desktop\DisplayCPP\glm;C:\Users\Oprah\Desktop\DisplayCPP\sdl2-2.0.3\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>E:\Tamarous\DisplayCPP\glew-1.11.0\include\GL;E:\Tamarous\DisplayCPP\glm;E:\Tamarous\DisplayCPP\sdl2-2.0.3\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <AdditionalOptions>/D _CRT_SECURE_NO_WARNINGS %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>C:\Users\Oprah\Desktop\DisplayCPP\glew-1.11.0\lib\Release\Win32;C:\Users\Oprah\Desktop\DisplayCPP\glew-1.11.0\lib\Release MX\Win32;C:\Users\Oprah\Desktop\DisplayCPP\sdl2-2.0.3\bin\win32;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>E:\Tamarous\DisplayCPP\glew-1.11.0\lib\Release\Win32;E:\Tamarous\DisplayCPP\glew-1.11.0\lib\Release MX\Win32;E:\Tamarous\DisplayCPP\sdl2-2.0.3\bin\win32;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>glew32.lib;SDL2.lib;SDL2main.lib;opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
