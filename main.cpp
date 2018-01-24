@@ -119,7 +119,7 @@ void YV12ToBGR24_Native(uint8_t* pYUV, uint8_t* pBGR24, int width, int height) {
 int main(int argv, char** args) {
     int frameHeight = 1920;
     int frameWidth = 3840;
-	Player *player = new Player(frameWidth,frameHeight, EQUALAREA);
+	Player *player = new Player(frameWidth,frameHeight);
 	player->init();
 	
     uint8_t *yuvData = (uint8_t *)malloc(sizeof(uint8_t)*frameHeight*frameWidth * 3 / 2);
@@ -134,8 +134,18 @@ int main(int argv, char** args) {
 	}
 	readDataFromFile("cpp.yuv", yuvData,frameWidth, frameHeight);
 	convertYUV2RGB(yuvData, rgbData, frameWidth, frameHeight);
+    player->setupProjectionMode(EQUALAREA);
 	player->setupTextureData(rgbData);
 	player->renderLoop();
+
+
+    readDataFromFile("line.yuv", yuvData, frameWidth, frameHeight);
+    convertYUV2RGB(yuvData, rgbData, frameWidth, frameHeight);
+    player->setupProjectionMode(EQUIRECTANGULAR);
+    player->setupTextureData(rgbData);
+    player->renderLoop();
+
+    printf("Will exit.\n");
 	free(yuvData);
 	free(rgbData);
     delete player;

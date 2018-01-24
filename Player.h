@@ -14,7 +14,8 @@
 #define CPP 1
 enum ProjectionMode {
     EQUIRECTANGULAR,
-    EQUALAREA
+    EQUALAREA,
+    NONE
 };
 
 
@@ -28,20 +29,25 @@ public:
         QueryPerformanceCounter(&start);
     }
 
-    // 返回从Start()开始到Now()之间经过的时间，以毫秒(ms)为单位
+    /**
+     * 返回从Start()开始到Now()之间经过的时间，以毫秒(ms)为单位
+     */
     __int64 elapsedMillionSecondsSinceStart() {
         LARGE_INTEGER now;
         QueryPerformanceCounter(&now);
         return (((now.QuadPart - start.QuadPart) * 1000) / freq.QuadPart);
     }
 
+    /**
+     * 返回从Start()开始到Now()之间经过的时间，以微秒(us)为单位
+     */
     __int64 elapsedMicroSecondsSinceStart() {
         LARGE_INTEGER now;
         QueryPerformanceCounter(&now);
         return ((now.QuadPart - start.QuadPart) * 1000000 / freq.QuadPart);
     }
 
-    _int64 elapsedTimeInMillionSeconds(void (*func)()) {
+    __int64 elapsedTimeInMillionSeconds(void (*func)()) {
         QueryPerformanceCounter(&start);
         func();
         LARGE_INTEGER now;
@@ -56,14 +62,15 @@ private:
 
 class Player {
 public:
-	Player(ProjectionMode mode);
-	Player(int numberOfPatches, ProjectionMode mode);
-    Player(int width, int height, ProjectionMode mode);
+	Player();
+	Player(int numberOfPatches);
+    Player(int width, int height);
 	~Player();
 	bool init();
 	void destroyGL();
 	bool setupTextureData(unsigned char *rgbData);
 	void renderLoop();
+    void setupProjectionMode(ProjectionMode mode);
 private:
 	bool setupShaders();
 	bool setupTexture();
@@ -115,8 +122,8 @@ private:
 	int pCurrentYposition;
 	int pWindowHeight;
 	int pWindowWidth;
-	int pVertexCount;
-	int pNumberOfPatches;
+	int vertexCount;
+	int patchNumbers;
 
 	float lon;
 	float lat;
