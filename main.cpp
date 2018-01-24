@@ -1,4 +1,4 @@
-#include "GLHelper.h"
+#include "Player.h"
 #include "yuvConverter.h"
 #include <fstream>
 void readDataFromFile(const char *fileName, unsigned char *yuvData, int frameWidth, int frameHeight) {
@@ -85,7 +85,6 @@ void rgb24ToBMP(unsigned char *rgbBuffer, int width, int height, const char *bmp
 	return;
 }
 
-
 void YV12ToBGR24_Native(uint8_t* pYUV, uint8_t* pBGR24, int width, int height) {
     if (width < 1 || height < 1 || pYUV == NULL || pBGR24 == NULL)
         return;
@@ -118,11 +117,11 @@ void YV12ToBGR24_Native(uint8_t* pYUV, uint8_t* pBGR24, int width, int height) {
 }
 
 int main(int argv, char** args) {
-	GLHelper *helper = new GLHelper(512);
-	helper->init();
+    int frameHeight = 1920;
+    int frameWidth = 3840;
+	Player *player = new Player(frameWidth,frameHeight, EQUALAREA);
+	player->init();
 	
-	int frameHeight = 1920;
-	int frameWidth = 3840;
     uint8_t *yuvData = (uint8_t *)malloc(sizeof(uint8_t)*frameHeight*frameWidth * 3 / 2);
 	if (yuvData == NULL) {
 		std::cout << __FUNCTION__ << " - Failed to allocate memory fro YUV data." << std::endl;
@@ -133,15 +132,13 @@ int main(int argv, char** args) {
 		std::cout << __FUNCTION__ << " - Failed to allocate memory fro RGB data." << std::endl;
 		return 0;
 	}
-	readDataFromFile("ZSP.yuv", yuvData,frameWidth, frameHeight);
+	readDataFromFile("cpp.yuv", yuvData,frameWidth, frameHeight);
 	convertYUV2RGB(yuvData, rgbData, frameWidth, frameHeight);
-
-    //helper->setupCppCoordinates(frameWidth, frameHeight);
-	helper->setupTextureData(rgbData, frameWidth, frameHeight);
-	helper->renderLoop();
+	player->setupTextureData(rgbData);
+	player->renderLoop();
 	free(yuvData);
 	free(rgbData);
-    delete helper;
+    delete player;
 	return 0;
 }
 

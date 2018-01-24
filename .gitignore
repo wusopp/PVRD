@@ -8,6 +8,9 @@ gnore Visual Studio temporary files, build results, and
 *.user
 *.userosscache
 *.sln.docstates
+*.yuv
+*.bmp
+*.txt
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs

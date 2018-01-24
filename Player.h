@@ -11,6 +11,13 @@
 #include "gtc/constants.hpp"
 #include <vector>
 
+#define CPP 1
+enum ProjectionMode {
+    EQUIRECTANGULAR,
+    EQUALAREA
+};
+
+
 class CStopwatch {
 public:
     CStopwatch() {
@@ -47,25 +54,25 @@ private:
     LARGE_INTEGER start;
 };
 
-
-class GLHelper {
+class Player {
 public:
-	GLHelper();
-	GLHelper(int numberOfPatches);
-	~GLHelper();
+	Player(ProjectionMode mode);
+	Player(int numberOfPatches, ProjectionMode mode);
+    Player(int width, int height, ProjectionMode mode);
+	~Player();
 	bool init();
-	void destroy();
-	bool setupTextureData(unsigned char *rgbData, int frameWidth, int frameHeight);
-    bool setupCppCoordinates(int frameWidth, int frameHeight);
+	void destroyGL();
+	bool setupTextureData(unsigned char *rgbData);
 	void renderLoop();
 private:
 	bool setupShaders();
 	bool setupTexture();
 	bool setupSphereCoordinates();
+    bool setupCppCoordinates();
 	
 	bool setupMatrixes();
 	void setupProjectionMatrix();
-	void drawFrame();
+	void drawFrameERP();
     void drawFrameCpp();
 	bool handleInput();
 	void resizeWindow(SDL_Event& event);
@@ -85,6 +92,23 @@ private:
 	GLuint sceneVertBuffer;
 	GLuint sceneUVBuffer;
 
+#ifdef CPP
+    GLuint topTriangleVAO;
+    GLuint topTriangleBuffer;
+    GLuint topUVBuffer;
+
+    GLuint bottomTriangleVAO;
+    GLuint bottomTriangleBuffer;
+    GLuint bottomUVBuffer;
+    int topVertexCount;
+    int bottomVertexCount;
+    std::vector<double> topTriangleVector;
+    std::vector<double> topUVVector;
+    std::vector<double> bottomTriangleVector;
+    std::vector<double> bottomUVVector;
+
+#endif // CPP
+
 	int pPreviousXposition;
 	int pPreviousYposition;
 	int pCurrentXposition;
@@ -101,6 +125,8 @@ private:
 	float *uvCoordinates = NULL;
     std::vector<double> vertexVector;
     std::vector<double> uvVector;
-
+    int frameHeight;
+    int frameWidth;
     CStopwatch *watch = NULL;
+    ProjectionMode projectionMode;
 };

@@ -18,18 +18,18 @@
     <ClCompile Include="main.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="GLHelper.cpp">
+    <ClCompile Include="yuvConverter.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="yuvConverter.cpp">
+    <ClCompile Include="Player.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="GLHelper.h">
+    <ClInclude Include="yuvConverter.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="yuvConverter.h">
+    <ClInclude Include="Player.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>

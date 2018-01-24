@@ -1,4 +1,4 @@
-#include "GLHelper.h"
+#include "Player.h"
 #include <math.h>
 #define glCheckError() glCheckError_(__LINE__)
 
@@ -6,14 +6,14 @@ void glCheckError_(int line) {
     GLenum errorCode;
     char error[100];
     memset(error, 0, sizeof(error));
-    while ((errorCode = glGetError()) != GL_NO_ERROR) {
+    while((errorCode = glGetError()) != GL_NO_ERROR) {
 
-        switch (errorCode) {
-        case GL_INVALID_ENUM:                  sprintf_s(error, "GL_INVALID_ENUM"); break;
-        case GL_INVALID_VALUE:                 sprintf_s(error, "GL_INVALID_VALUE"); break;
-        case GL_INVALID_OPERATION:             sprintf_s(error, "GL_INVALID_OPERATION"); break;
-        case GL_OUT_OF_MEMORY:                 sprintf_s(error, "GL_OUT_OF_MEMORY"); break;
-        case GL_INVALID_FRAMEBUFFER_OPERATION: sprintf_s(error, "GL_INVALID_FRAMEBUFFER_OPERATION"); break;
+        switch(errorCode) {
+            case GL_INVALID_ENUM:                  sprintf_s(error, "GL_INVALID_ENUM"); break;
+            case GL_INVALID_VALUE:                 sprintf_s(error, "GL_INVALID_VALUE"); break;
+            case GL_INVALID_OPERATION:             sprintf_s(error, "GL_INVALID_OPERATION"); break;
+            case GL_OUT_OF_MEMORY:                 sprintf_s(error, "GL_OUT_OF_MEMORY"); break;
+            case GL_INVALID_FRAMEBUFFER_OPERATION: sprintf_s(error, "GL_INVALID_FRAMEBUFFER_OPERATION"); break;
         }
         printf("Line is %d, glError: %s\n", line, error);
     }
@@ -55,49 +55,62 @@ void addShader(int type, const char * source, int program) {
     glCompileShader(shader);
     GLint compiled = 0;
     glGetShaderiv(shader, GL_COMPILE_STATUS, &compiled);
-    if (compiled != GL_TRUE) {
+    if(compiled != GL_TRUE) {
         std::cout << "Failed to add shader." << std::endl;
     }
     glAttachShader(program, shader);
     glDeleteShader(shader);
 }
 
-GLHelper::GLHelper() :
-    pWindow(NULL), 
-    pContext(NULL), 
-    pNumberOfPatches(64),
+Player::Player(ProjectionMode mode) :
+    pWindow(NULL),
+    pContext(NULL),
+    projectionMode(mode),
+    pNumberOfPatches(128),
     watch(new CStopwatch()) {
 }
 
-GLHelper::GLHelper(int numberOfPatches) : 
-    pWindow(NULL), 
-    pContext(NULL), 
+Player::Player(int numberOfPatches, ProjectionMode mode) :
+    pWindow(NULL),
+    pContext(NULL),
+    projectionMode(mode),
     watch(new CStopwatch()) {
     this->pNumberOfPatches = numberOfPatches;
 }
 
-GLHelper::~GLHelper() {
-    if (vertexCoordinates != NULL) {
+Player::Player(int width, int height, ProjectionMode mode) :
+    pWindow(NULL),
+    pContext(NULL),
+    projectionMode(mode),
+    pNumberOfPatches(128),
+    watch(new CStopwatch()),
+    frameWidth(width),
+    frameHeight(height) {
+
+}
+
+Player::~Player() {
+    if(vertexCoordinates != NULL) {
         delete[] vertexCoordinates;
         vertexCoordinates = NULL;
     }
-    if (uvCoordinates != NULL) {
+    if(uvCoordinates != NULL) {
         delete[] uvCoordinates;
         uvCoordinates = NULL;
     }
-    destroy();
+    destroyGL();
 }
 
-bool GLHelper::init() {
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER) < 0) {
+bool Player::init() {
+    if(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER) < 0) {
         std::cout << __FUNCTION__ << "- SDL could not initialize! SDL Error: " << SDL_GetError() << std::endl;
         return false;
     }
 
     int windowPosX = 100;
     int windowPosY = 100;
-    pWindowWidth = 640;
-    pWindowHeight = 360;
+    pWindowWidth = 1280;
+    pWindowHeight = 640;
 
     Uint32 windowFlags = SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE;
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
@@ -109,50 +122,58 @@ bool GLHelper::init() {
 
     pWindow = SDL_CreateWindow("Display CPP", windowPosX, windowPosY, pWindowWidth, pWindowHeight, windowFlags);
 
-    if (pWindow == NULL) {
+    if(pWindow == NULL) {
         std::cout << __FUNCTION__ << "- Window could not be created! SDL Error: " << SDL_GetError() << std::endl;
         return false;
     }
 
     pContext = SDL_GL_CreateContext(pWindow);
-    if (pContext == NULL) {
+    if(pContext == NULL) {
         std::cout << __FUNCTION__ << "- OpenGL context could not be created! SDL Error: " << SDL_GetError() << std::endl;
         return false;
     }
 
     glewExperimental = GL_TRUE;
-    if (glewInit() != GLEW_OK) {
+    if(glewInit() != GLEW_OK) {
         std::cout << __FUNCTION__ << "- GLEW could not be inited! SDL Error: " << SDL_GetError() << std::endl;
         return false;
     }
     glGetError();
 
-    if (SDL_GL_SetSwapInterval(0) < 0) {
+    if(SDL_GL_SetSwapInterval(0) < 0) {
         std::cout << __FUNCTION__ << "- SDL could not swapInteval! SDL Error: " << SDL_GetError() << std::endl;
         return false;
     }
 
-    if (!setupMatrixes()) {
+    if(!setupMatrixes()) {
         std::cout << __FUNCTION__ << "- SetupCamera failed." << std::endl;
         return false;
     }
 
-    if (!setupShaders()) {
+    if(!setupShaders()) {
         std::cout << __FUNCTION__ << "- SetupGraphics failed." << std::endl;
         return false;
     }
-    if (!setupTexture()) {
+    if(!setupTexture()) {
         std::cout << __FUNCTION__ << "- SetupTexture failed." << std::endl;
         return false;
     }
-    if (!setupSphereCoordinates()) {
-        std::cout << __FUNCTION__ << "- SetupScene failed." << std::endl;
-        return false;
+
+    if(projectionMode == EQUIRECTANGULAR) {
+        if(!setupSphereCoordinates()) {
+            std::cout << __FUNCTION__ << "- SetupScene failed." << std::endl;
+            return false;
+        }
+    } else if(projectionMode == EQUALAREA) {
+        if(!setupCppCoordinates()) {
+            std::cout << __FUNCTION__ << "- SetupScene failed." << std::endl;
+            return false;
+        }
     }
     return true;
 }
 
-void GLHelper::computeViewMatrix() {
+void Player::computeViewMatrix() {
     int distanceX = pCurrentXposition - pPreviousXposition;
     int distanceY = pCurrentYposition - pPreviousYposition;
 
@@ -174,7 +195,7 @@ void GLHelper::computeViewMatrix() {
     viewMatrix = glm::lookAt(glm::vec3(0, 0, 0), glm::vec3(camera[0], camera[1], camera[2]), glm::vec3(0, 1, 0));
 }
 
-bool GLHelper::setupMatrixes() {
+bool Player::setupMatrixes() {
     modelMatrix = glm::mat4(1.0f);
 
     glm::vec3 cameraPosition(0, 0, 0);
@@ -187,12 +208,12 @@ bool GLHelper::setupMatrixes() {
     return true;
 }
 
-void GLHelper::setupProjectionMatrix() {
+void Player::setupProjectionMatrix() {
     float aspect = pWindowWidth * 1.0f / pWindowHeight;
     projectMatrix = glm::perspective(45.0f, aspect, 0.1f, 40.0f);
 }
 
-bool GLHelper::setupSphereCoordinates() {
+bool Player::setupSphereCoordinates() {
     glCheckError();
     this->pVertexCount = this->pNumberOfPatches * this->pNumberOfPatches * 3;
     this->vertexCoordinates = new float[this->pVertexCount * 3 * sizeof(float)];
@@ -211,9 +232,9 @@ bool GLHelper::setupSphereCoordinates() {
     float u[4] = { 0.0f };
     float v[4] = { 0.0f };
     int m = 0, n = 0;
-    for (int i = 0; i < half_pieces; i++) {
+    for(int i = 0; i < half_pieces; i++) {
         angle_z = i * step_z;
-        for (int j = 0; j < pieces; j++) {
+        for(int j = 0; j < pieces; j++) {
             angle_xy = j * step_xy;
             z[0] = (float)(radius * sin(angle_z)*cos(angle_xy));
             x[0] = (float)(radius*sin(angle_z)*sin(angle_xy));
@@ -268,8 +289,6 @@ bool GLHelper::setupSphereCoordinates() {
         }
     }
 
-
-
     glGenVertexArrays(1, &sceneVAO);
     glBindVertexArray(sceneVAO);
 
@@ -301,55 +320,142 @@ void computeSTCoordinates(double x, double y, double &s, double &t, double radiu
     return;
 }
 
-bool GLHelper::setupCppCoordinates(int frameWidth,int frameHeight) {
-    // 让y均匀变化，然后根据椭圆的方程解出x，然后根据x、y与经纬度的关系解出经纬度
-    // x = 2H - 2/H * y * y;
+void computeUVCoordinates(
+    double x,
+    double y,
+    double &s,
+    double &t,
+    int framewidth,
+    int frameheight) {
 
+    double u = fabs(x) / framewidth;
+    double v = fabs(y) / frameheight;
+
+    if(x >= 0 && y >= 0) {
+        s = 0.5 + u;
+        t = 0.5 + v;
+    } else if(x >= 0 && y < 0) {
+        s = 0.5 + u;
+        t = 0.5 - v;
+    } else if(x < 0 && y >= 0) {
+        s = 0.5 - u;
+        t = 0.5 + v;
+    } else if(x < 0 && y < 0) {
+        s = 0.5 - u;
+        t = 0.5 - v;
+    }
+}
+
+bool Player::setupCppCoordinates() {
+#ifdef CPP
     int H = frameHeight / 2;
-    float R = 2 * H / (float)(sqrt(3 * M_PI));
-    double slope = 2.0f / H;
+    double R = 2.0 * H / sqrt(3 * M_PI);
+    double slope = 2.0 / H;
     double s, t, x, y;
-    // 第一象限和第二象限
-    for (y = 0; y < 1920; y += 40.0f) {
-        x = 2 * H - slope*y*y;
-        vertexVector.push_back(x);
-        vertexVector.push_back(y);
-        computeSTCoordinates(x, y, s, t, R);
-        uvVector.push_back(s);
-        uvVector.push_back(t);
 
-        x = -x;
-        vertexVector.push_back(x);
-        vertexVector.push_back(y);
-        s = 1.0f - s;
-        uvVector.push_back(s);
-        uvVector.push_back(t);
+    /**
+     * 最上面和最下面的一圈用三角形扇来绘制
+     */
+
+     /**
+      * 先处理北极点
+      */
+    topTriangleVector.push_back(0);
+    topTriangleVector.push_back(H);
+    topUVVector.push_back(0.5);
+    topUVVector.push_back(1);
+
+    /**
+     * 处理维度为80的左半圈顶点
+     */
+    for(double lon = glm::radians(-180.0f); lon <= glm::radians(180.0f); lon += glm::radians(10.0f)) {
+        double lat = glm::radians(80.0f);
+        x = sqrt(3 / M_PI) * R * lon * (2 * cos(2 * lat / 3) - 1);
+        y = sqrt(3 * M_PI) * R * sin(lat / 3);
+        topTriangleVector.push_back(x);
+        topTriangleVector.push_back(y);
+        computeUVCoordinates(x, y, s, t, frameWidth, frameHeight);
+        topUVVector.push_back(s);
+        topUVVector.push_back(t);
     }
 
-    // 第三象限和第四象限
-    for (y = 0; y > -1920; y -= 40.0f) {
-        x = slope * y * y - 2 * H;
-        vertexVector.push_back(x);
-        vertexVector.push_back(y);
-        computeSTCoordinates(x, y, s, t, R);
-        uvVector.push_back(s);
-        uvVector.push_back(t);
 
-        x = -x;
-        vertexVector.push_back(x);
-        vertexVector.push_back(y);
-        s = 1.0f - s;
-        uvVector.push_back(s);
-        uvVector.push_back(t);
+    topVertexCount = topTriangleVector.size() / 2 + 1;
+    glCheckError();
+    glGenVertexArrays(1, &topTriangleVAO);
+    glBindVertexArray(topTriangleVAO);
+    int topTriangleVertexSize = topTriangleVector.size() * sizeof(double);
+    int topTriangleUVSize = topUVVector.size() * sizeof(double);
+    glGenBuffers(1, &topTriangleBuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, topTriangleBuffer);
+    glBufferData(GL_ARRAY_BUFFER, topTriangleVertexSize, &this->topTriangleVector[0], GL_STATIC_DRAW);
+    glGenBuffers(1, &topUVBuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, topUVBuffer);
+    glBufferData(GL_ARRAY_BUFFER, topTriangleUVSize, &this->topUVVector[0], GL_STATIC_DRAW);
+    glBindVertexArray(0);
+    glCheckError();
+
+    /**
+     * 处理维度为-70~70的这些顶点
+     */
+    for(double lat = glm::radians(70.0f); lat >= glm::radians(-70.0f); lat -= glm::radians(10.0f)) {
+        for(double lon = glm::radians(-180.0f); lon <= glm::radians(180.0f); lon += glm::radians(10.0f)) {
+            x = sqrt(3 / M_PI) * R * lon * (2 * cos(2 * lat / 3) - 1);
+            y = sqrt(3 * M_PI) * R * sin(lat / 3);
+            vertexVector.push_back(x);
+            vertexVector.push_back(y);
+            computeSTCoordinates(x, y, s, t, R);
+            uvVector.push_back(s);
+            uvVector.push_back(t);
+        }
     }
+
+    /**
+     * 处理南极点
+     */
+    bottomTriangleVector.push_back(0);
+    bottomTriangleVector.push_back(-H);
+    bottomUVVector.push_back(0.5);
+    bottomUVVector.push_back(0);
+
+    /**
+     * 处理维度为-80的这一圈顶点
+     */
+    for(double lon = glm::radians(-180.0f); lon <= glm::radians(180.0f); lon += glm::radians(10.0f)) {
+        double lat = glm::radians(80.0f);
+        x = sqrt(3 / M_PI) * R * lon * (2 * cos(2 * lat / 3) - 1);
+        y = sqrt(3 * M_PI) * R * sin(lat / 3);
+        bottomTriangleVector.push_back(x);
+        bottomTriangleVector.push_back(y);
+        computeUVCoordinates(x, y, s, t, frameWidth, frameHeight);
+        bottomUVVector.push_back(s);
+        bottomUVVector.push_back(t);
+    }
+    bottomVertexCount = bottomTriangleVector.size() / 2 + 1;
+
+    glCheckError();
+    glGenVertexArrays(1, &bottomTriangleVAO);
+    glBindVertexArray(bottomTriangleVAO);
+    int bottomVertexSize = bottomTriangleVector.size() * sizeof(double);
+    int bottomUVSize = bottomUVVector.size() * sizeof(double);
+    glGenBuffers(1, &bottomTriangleBuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, bottomTriangleBuffer);
+    glBufferData(GL_ARRAY_BUFFER, bottomVertexSize, &this->bottomTriangleVector[0], GL_STATIC_DRAW);
+
+    glGenBuffers(1, &bottomUVBuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, bottomUVBuffer);
+    glBufferData(GL_ARRAY_BUFFER, bottomUVSize, &this->bottomUVVector[0], GL_STATIC_DRAW);
+    glBindVertexArray(0);
+    glCheckError();
+
 
     pVertexCount = vertexVector.size() / 2;
+    int vertexSize = vertexVector.size() * sizeof(double);
+    int uvSize = uvVector.size() * sizeof(double);
 
+    glCheckError();
     glGenVertexArrays(1, &sceneVAO);
     glBindVertexArray(sceneVAO);
-
-    int vertexSize = vertexVector.size()*sizeof(float);
-    int uvSize = uvVector.size() * sizeof(float);
 
     glGenBuffers(1, &sceneVertBuffer);
     glBindBuffer(GL_ARRAY_BUFFER, sceneVertBuffer);
@@ -361,13 +467,14 @@ bool GLHelper::setupCppCoordinates(int frameWidth,int frameHeight) {
 
     glBindVertexArray(0);
     glCheckError();
+#endif
     return true;
 }
 
-bool GLHelper::setupShaders() {
+bool Player::setupShaders() {
     glCheckError();
     sceneProgramID = glCreateProgram();
-    if (!sceneProgramID) {
+    if(!sceneProgramID) {
         return false;
     }
     addShader(GL_VERTEX_SHADER, VERTEX_SHADER, sceneProgramID);
@@ -378,36 +485,37 @@ bool GLHelper::setupShaders() {
     GLint linkStatus = GL_FALSE;
     glGetProgramiv(sceneProgramID, GL_LINK_STATUS, &linkStatus);
     glCheckError();
-    if (linkStatus != GL_TRUE) {
+    if(linkStatus != GL_TRUE) {
         printf("Link sceneProgram failed.\n");
         return false;
     }
     sceneMVPMatrixPointer = glGetUniformLocation(sceneProgramID, "matrix");
-    if (sceneMVPMatrixPointer == -1) {
+    if(sceneMVPMatrixPointer == -1) {
         return false;
     }
     return true;
 }
 
-bool GLHelper::setupTexture() {
+bool Player::setupTexture() {
     glUseProgram(sceneProgramID);
     glGenTextures(1, &sceneTextureID);
     glUniform1i(glGetUniformLocation(sceneProgramID, "mytexture"), 0);
     glBindTexture(GL_TEXTURE_2D, sceneTextureID);
     glTexParameterf(GL_TEXTURE_2D,
-        GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+                    GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameterf(GL_TEXTURE_2D,
-        GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+                    GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameterf(GL_TEXTURE_2D,
-        GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+                    GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameterf(GL_TEXTURE_2D,
-        GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+                    GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glUseProgram(0);
     glCheckError();
     return true;
 }
 
-void GLHelper::drawFrameCpp() {
+void Player::drawFrameCpp() {
+#ifdef CPP
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glViewport(0, 0, pWindowWidth, pWindowHeight);
@@ -421,6 +529,20 @@ void GLHelper::drawFrameCpp() {
 
     glUniformMatrix4fv(sceneMVPMatrixPointer, 1, GL_FALSE, &mvpMatrix[0][0]);
 
+    glCheckError();
+    // 首先绘制上半部分的三角形扇
+    glBindVertexArray(topTriangleVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, topTriangleBuffer);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, (const void *)0);
+    glBindBuffer(GL_ARRAY_BUFFER, topUVBuffer);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, (const void *)0);
+    glDrawArrays(GL_TRIANGLE_FAN, 0, topVertexCount);
+    glBindVertexArray(0);
+
+    // 绘制中部的矩形
+    glCheckError();
     glBindVertexArray(sceneVAO);
 
     glBindBuffer(GL_ARRAY_BUFFER, sceneVertBuffer);
@@ -433,11 +555,27 @@ void GLHelper::drawFrameCpp() {
 
     glDrawArrays(GL_POINTS, 0, this->pVertexCount);
     glBindVertexArray(0);
+    glCheckError();
+
+    glCheckError();
+    // 绘制下半部分的三角形扇
+
+    glBindVertexArray(bottomTriangleVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, bottomTriangleBuffer);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, (const void *)0);
+    glBindBuffer(GL_ARRAY_BUFFER, bottomUVBuffer);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, (const void *)0);
+    glDrawArrays(GL_TRIANGLE_FAN, 0, bottomVertexCount);
+    glBindVertexArray(0);
+
     SDL_GL_SwapWindow(pWindow);
     glCheckError();
+#endif 
 }
 
-void GLHelper::drawFrame() {
+void Player::drawFrameERP() {
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glViewport(0, 0, pWindowWidth, pWindowHeight);
@@ -467,13 +605,14 @@ void GLHelper::drawFrame() {
     glCheckError();
 }
 
-void GLHelper::destroy() {
-    if (sceneProgramID) {
+void Player::destroyGL() {
+    if(sceneProgramID) {
         glDeleteProgram(sceneProgramID);
     }
 }
 
-bool GLHelper::setupTextureData(unsigned char *rgbData, int frameWidth, int frameHeight) {
+bool Player::setupTextureData(unsigned char *rgbData) {
+    assert(frameHeight > 0 && frameWidth > 0);
     glUseProgram(sceneProgramID);
     glCheckError();
     glBindTexture(GL_TEXTURE_2D, sceneTextureID);
@@ -483,60 +622,72 @@ bool GLHelper::setupTextureData(unsigned char *rgbData, int frameWidth, int fram
     return true;
 }
 
-bool GLHelper::handleInput() {
+bool Player::handleInput() {
     SDL_Event event;
     bool willExit = false;
     static bool isMouseSelected = false;
-    while (SDL_PollEvent(&event) != 0) {
-        if (event.type == SDL_QUIT) {
-            willExit = true;
-        } else if (event.type == SDL_KEYDOWN) {
-            if (event.key.keysym.sym == SDLK_ESCAPE || event.key.keysym.sym == SDLK_q) {
+    while(SDL_PollEvent(&event) != 0) {
+        switch(event.type) {
+            case SDL_QUIT:
                 willExit = true;
-            }
-        } else if (event.type == SDL_MOUSEMOTION) {
-            if (isMouseSelected) {
-                SDL_GetMouseState(&pCurrentXposition, &pCurrentYposition);
-                computeViewMatrix();
-            }
-        } else if (event.type == SDL_MOUSEBUTTONDOWN) {
-            isMouseSelected = true;
-            SDL_GetMouseState(&pPreviousXposition, &pPreviousYposition);
-        } else if (event.type == SDL_MOUSEBUTTONUP) {
-            isMouseSelected = false;
-        } else if (event.type == SDL_WINDOWEVENT) {
-            if (event.window.event == SDL_WINDOWEVENT_RESIZED) {
-                resizeWindow(event);
-            }
+                break;
+            case SDL_KEYDOWN:
+                if(event.key.keysym.sym == SDLK_ESCAPE || event.key.keysym.sym == SDLK_q) {
+                    willExit = true;
+                }
+                break;
+            case SDL_MOUSEMOTION:
+                if(isMouseSelected) {
+                    SDL_GetMouseState(&pCurrentXposition, &pCurrentYposition);
+                    computeViewMatrix();
+                    computeMVPMatrix();
+                }
+                break;
+            case SDL_MOUSEBUTTONDOWN:
+                isMouseSelected = true;
+                SDL_GetMouseState(&pPreviousXposition, &pPreviousYposition);
+                break;
+            case SDL_MOUSEBUTTONUP:
+                isMouseSelected = false;
+                break;
+            case SDL_WINDOWEVENT:
+                if(event.window.event == SDL_WINDOWEVENT_RESIZED) {
+                    resizeWindow(event);
+                }
+                break;
+            default:
+                break;
         }
     }
     return willExit;
 }
 
-void GLHelper::resizeWindow(SDL_Event& event) {
+void Player::resizeWindow(SDL_Event& event) {
     pWindowWidth = event.window.data1;
     pWindowHeight = event.window.data2;
+    glViewport(0, 0, pWindowWidth, pWindowHeight);
     setupProjectionMatrix();
     computeMVPMatrix();
 }
 
-void GLHelper::renderLoop() {
+void Player::renderLoop() {
 
     bool bQuit = false;
     SDL_StartTextInput();
     static int frameIndex = 0;
-    while (!bQuit) {
+    while(!bQuit) {
         watch->Start();
-        drawFrame();
-        //drawFrameCpp();
-        __int64 time = watch->elapsedMicroSecondsSinceStart();
-        //std::cout << "frameIndex: " << frameIndex << ", renderFrame costs " << time << " us." << std::endl;
+        if(projectionMode == EQUIRECTANGULAR) {
+            drawFrameERP();
+        } else if(projectionMode == EQUALAREA) {
+            drawFrameCpp();
+        }
         frameIndex++;
         bQuit = handleInput();
     }
     SDL_StopTextInput();
 }
 
-void GLHelper::computeMVPMatrix() {
+void Player::computeMVPMatrix() {
     mvpMatrix = projectMatrix * viewMatrix * modelMatrix;
 }
