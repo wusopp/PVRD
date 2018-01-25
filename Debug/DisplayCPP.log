@@ -1,17 +1,16 @@
-﻿  Player.cpp
-e:\tamarous\displaycpp\displaycpp\player.cpp(331): warning C4244: “初始化”: 从“double”转换到“float”，可能丢失数据
-e:\tamarous\displaycpp\displaycpp\player.cpp(333): warning C4305: “-=”: 从“double”到“float”截断
-e:\tamarous\displaycpp\displaycpp\player.cpp(334): warning C4305: “-=”: 从“double”到“float”截断
-e:\tamarous\displaycpp\displaycpp\player.cpp(336): warning C4244: “=”: 从“double”转换到“float”，可能丢失数据
-e:\tamarous\displaycpp\displaycpp\player.cpp(337): warning C4244: “=”: 从“double”转换到“float”，可能丢失数据
-e:\tamarous\displaycpp\displaycpp\player.cpp(375): warning C4244: “参数”: 从“int”转换到“float”，可能丢失数据
+﻿  main.cpp
+  Player.cpp
+e:\tamarous\displaycpp\displaycpp\player.cpp(325): warning C4244: “初始化”: 从“int”转换到“float”，可能丢失数据
+e:\tamarous\displaycpp\displaycpp\player.cpp(326): warning C4244: “初始化”: 从“double”转换到“float”，可能丢失数据
+e:\tamarous\displaycpp\displaycpp\player.cpp(328): warning C4305: “-=”: 从“double”到“float”截断
+e:\tamarous\displaycpp\displaycpp\player.cpp(329): warning C4305: “-=”: 从“double”到“float”截断
+e:\tamarous\displaycpp\displaycpp\player.cpp(331): warning C4244: “=”: 从“double”转换到“float”，可能丢失数据
+e:\tamarous\displaycpp\displaycpp\player.cpp(332): warning C4244: “=”: 从“double”转换到“float”，可能丢失数据
+e:\tamarous\displaycpp\displaycpp\player.cpp(370): warning C4244: “参数”: 从“double”转换到“float”，可能丢失数据
 e:\tamarous\displaycpp\displaycpp\player.cpp(375): warning C4244: “参数”: 从“double”转换到“float”，可能丢失数据
-e:\tamarous\displaycpp\displaycpp\player.cpp(380): warning C4244: “参数”: 从“int”转换到“float”，可能丢失数据
 e:\tamarous\displaycpp\displaycpp\player.cpp(380): warning C4244: “参数”: 从“double”转换到“float”，可能丢失数据
-e:\tamarous\displaycpp\displaycpp\player.cpp(385): warning C4244: “参数”: 从“int”转换到“float”，可能丢失数据
-e:\tamarous\displaycpp\displaycpp\player.cpp(385): warning C4244: “参数”: 从“double”转换到“float”，可能丢失数据
-e:\tamarous\displaycpp\displaycpp\player.cpp(391): warning C4244: “参数”: 从“int”转换到“float”，可能丢失数据
-e:\tamarous\displaycpp\displaycpp\player.cpp(391): warning C4244: “参数”: 从“double”转换到“float”，可能丢失数据
+e:\tamarous\displaycpp\displaycpp\player.cpp(386): warning C4244: “参数”: 从“double”转换到“float”，可能丢失数据
+  正在生成代码...
 Player.obj : warning LNK4075: 忽略“/EDITANDCONTINUE”(由于“/OPT:LBR”规范)
   DisplayCPP.vcxproj -> E:\Tamarous\DisplayCPP\Debug\DisplayCPP.exe
   DisplayCPP.vcxproj -> E:\Tamarous\DisplayCPP\Debug\DisplayCPP.pdb (Full PDB)

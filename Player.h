@@ -14,14 +14,14 @@
 #define CPP 1
 enum ProjectionMode {
     EQUIRECTANGULAR,
-    EQUALAREA,
-    NONE
+    EQUAL_AREA,
+    NOT_SPECIFIED
 };
 
 
-class CStopwatch {
+class TimeMeasurer {
 public:
-    CStopwatch() {
+    TimeMeasurer() {
         QueryPerformanceFrequency(&freq);
     }
 
@@ -61,30 +61,33 @@ private:
 };
 
 class Player {
+    
 public:
-	Player();
 	Player(int numberOfPatches);
     Player(int width, int height);
-	~Player();
-	bool init();
-	void destroyGL();
-	bool setupTextureData(unsigned char *rgbData);
+    Player(int width, int height, int numberOfPatches);
+    ~Player();
+	bool setupTextureData(unsigned char *textureData);
 	void renderLoop();
     void setupProjectionMode(ProjectionMode mode);
 private:
+    bool init();
+    void destroyGL();
 	bool setupShaders();
 	bool setupTexture();
+    bool setupCoordinates();
 	bool setupSphereCoordinates();
     bool setupCppCoordinates();
-	
 	bool setupMatrixes();
 	void setupProjectionMatrix();
+    void drawFrame();
 	void drawFrameERP();
     void drawFrameCpp();
 	bool handleInput();
 	void resizeWindow(SDL_Event& event);
 	void computeMVPMatrix();
 	void computeViewMatrix();
+    void computeSTCoordinates(float latitude, float longitude, float &s, float &t);
 private:
     SDL_Window *pWindow = NULL;
 	SDL_GLContext pContext;
@@ -134,6 +137,6 @@ private:
     std::vector<double> uvVector;
     int frameHeight;
     int frameWidth;
-    CStopwatch *watch = NULL;
-    ProjectionMode projectionMode;
+    TimeMeasurer *watch = NULL;
+    ProjectionMode mode;
 };

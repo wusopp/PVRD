@@ -63,31 +63,35 @@ void addShader(int type, const char * source, int program) {
     glDeleteShader(shader);
 }
 
-Player::Player():
-    pWindow(NULL),
-    pContext(NULL),
-    projectionMode(NONE),
-    patchNumbers(128),
-    watch(new CStopwatch()) {
-}
-
 Player::Player(int numberOfPatches):
     pWindow(NULL),
     pContext(NULL),
-    projectionMode(NONE),
-    watch(new CStopwatch()) {
+    mode(NOT_SPECIFIED),
+    watch(new TimeMeasurer()) {
     this->patchNumbers = numberOfPatches;
+    init();
 }
 
 Player::Player(int width, int height):
     pWindow(NULL),
     pContext(NULL),
-    projectionMode(NONE),
+    mode(NOT_SPECIFIED),
     patchNumbers(128),
-    watch(new CStopwatch()),
+    watch(new TimeMeasurer()),
     frameWidth(width),
     frameHeight(height) {
+    init();
+}
 
+Player::Player(int width, int height, int numberOfPatches) :
+    pWindow(NULL),
+    pContext(NULL),
+    mode(NOT_SPECIFIED),
+    patchNumbers(numberOfPatches),
+    watch(new TimeMeasurer()),
+    frameWidth(width),
+    frameHeight(height) {
+    init();
 }
 
 Player::~Player() {
@@ -184,6 +188,8 @@ void Player::computeViewMatrix() {
     viewMatrix = glm::lookAt(glm::vec3(0, 0, 0), glm::vec3(camera[0], camera[1], camera[2]), glm::vec3(0, 1, 0));
 }
 
+
+
 bool Player::setupMatrixes() {
     modelMatrix = glm::mat4(1.0f);
 
@@ -202,6 +208,14 @@ void Player::setupProjectionMatrix() {
     projectMatrix = glm::perspective(45.0f, aspect, 0.1f, 40.0f);
 }
 
+void Player::drawFrame() {
+    if(mode == EQUIRECTANGULAR) {
+        drawFrameERP();
+    } else if(mode == EQUAL_AREA) {
+        drawFrameCpp();
+    }
+}
+
 bool Player::setupSphereCoordinates() {
     glCheckError();
     this->vertexCount = this->patchNumbers * this->patchNumbers * 3;
@@ -210,66 +224,75 @@ bool Player::setupSphereCoordinates() {
 
     int radius = 10;
     int pieces = this->patchNumbers;
-    int half_pieces = this->patchNumbers / 2;
-    double step_z = M_PI / (half_pieces);
-    double step_xy = step_z;
-    double angle_z;
-    double angle_xy;
+    int halfPieces = this->patchNumbers / 2;
+    double verticalInterval = M_PI / (halfPieces);
+    double horizontalInterval = verticalInterval;
+    double latitude;
+    double longitude;
     float z[4] = { 0.0f };
     float x[4] = { 0.0f };
     float y[4] = { 0.0f };
     float u[4] = { 0.0f };
     float v[4] = { 0.0f };
     int m = 0, n = 0;
-    for(int i = 0; i < half_pieces; i++) {
-        angle_z = i * step_z;
-        for(int j = 0; j < pieces; j++) {
-            angle_xy = j * step_xy;
-            z[0] = (float)(radius*sin(angle_z)*cos(angle_xy));
-            x[0] = (float)(radius*sin(angle_z)*sin(angle_xy));
-            y[0] = (float)(radius*cos(angle_z));
-            u[0] = (float)j / pieces;
-            v[0] = (float)i / half_pieces;
-            z[1] = (float)(radius*sin(angle_z + step_z)*cos(angle_xy));
-            x[1] = (float)(radius*sin(angle_z + step_z)*sin(angle_xy));
-            y[1] = (float)(radius*cos(angle_z + step_z));
-            u[1] = (float)j / pieces;
-            v[1] = (float)(i + 1) / half_pieces;
-            z[2] = (float)(radius*sin(angle_z + step_z)*cos(angle_xy + step_xy));
-            x[2] = (float)(radius*sin(angle_z + step_z)*sin(angle_xy + step_xy));
-            y[2] = (float)(radius*cos(angle_z + step_z));
-            u[2] = (float)(j + 1) / pieces;
-            v[2] = (float)(i + 1) / half_pieces;
-            z[3] = (float)(radius*sin(angle_z)*cos(angle_xy + step_xy));
-            x[3] = (float)(radius*sin(angle_z)*sin(angle_xy + step_xy));
-            y[3] = (float)(radius*cos(angle_z));
-            u[3] = (float)(j + 1) / pieces;
-            v[3] = (float)i / half_pieces;
+    for(int verticalIndex = 0; verticalIndex < halfPieces; verticalIndex++) {
+        latitude = verticalIndex * verticalInterval;
+        for(int horizontalIndex = 0; horizontalIndex < pieces; horizontalIndex++) {
+            longitude = horizontalIndex * horizontalInterval;
+            z[0] = (float)(radius*sin(latitude)*cos(longitude));
+            x[0] = (float)(radius*sin(latitude)*sin(longitude));
+            y[0] = (float)(radius*cos(latitude));
+            u[0] = (float)horizontalIndex / pieces;
+            v[0] = (float)verticalIndex / halfPieces;
+
+            z[1] = (float)(radius*sin(latitude + verticalInterval)*cos(longitude));
+            x[1] = (float)(radius*sin(latitude + verticalInterval)*sin(longitude));
+            y[1] = (float)(radius*cos(latitude + verticalInterval));
+            u[1] = (float)horizontalIndex / pieces;
+            v[1] = (float)(verticalIndex + 1) / halfPieces;
+
+            z[2] = (float)(radius*sin(latitude + verticalInterval)*cos(longitude + horizontalInterval));
+            x[2] = (float)(radius*sin(latitude + verticalInterval)*sin(longitude + horizontalInterval));
+            y[2] = (float)(radius*cos(latitude + verticalInterval));
+            u[2] = (float)(horizontalIndex + 1) / pieces;
+            v[2] = (float)(verticalIndex + 1) / halfPieces;
+
+            z[3] = (float)(radius*sin(latitude)*cos(longitude + horizontalInterval));
+            x[3] = (float)(radius*sin(latitude)*sin(longitude + horizontalInterval));
+            y[3] = (float)(radius*cos(latitude));
+            u[3] = (float)(horizontalIndex + 1) / pieces;
+            v[3] = (float)verticalIndex / halfPieces;
+
             this->vertexCoordinates[m++] = x[0];
             this->vertexCoordinates[m++] = y[0];
             this->vertexCoordinates[m++] = z[0];
             this->uvCoordinates[n++] = u[0];
             this->uvCoordinates[n++] = v[0];
+
             this->vertexCoordinates[m++] = x[1];
             this->vertexCoordinates[m++] = y[1];
             this->vertexCoordinates[m++] = z[1];
             this->uvCoordinates[n++] = u[1];
             this->uvCoordinates[n++] = v[1];
+
             this->vertexCoordinates[m++] = x[2];
             this->vertexCoordinates[m++] = y[2];
             this->vertexCoordinates[m++] = z[2];
             this->uvCoordinates[n++] = u[2];
             this->uvCoordinates[n++] = v[2];
+
             this->vertexCoordinates[m++] = x[2];
             this->vertexCoordinates[m++] = y[2];
             this->vertexCoordinates[m++] = z[2];
             this->uvCoordinates[n++] = u[2];
             this->uvCoordinates[n++] = v[2];
+
             this->vertexCoordinates[m++] = x[3];
             this->vertexCoordinates[m++] = y[3];
             this->vertexCoordinates[m++] = z[3];
             this->uvCoordinates[n++] = u[3];
             this->uvCoordinates[n++] = v[3];
+
             this->vertexCoordinates[m++] = x[0];
             this->vertexCoordinates[m++] = y[0];
             this->vertexCoordinates[m++] = z[0];
@@ -297,40 +320,12 @@ bool Player::setupSphereCoordinates() {
     return true;
 }
 
-
-void computeUVCoordinates(
-    double x,
-    double y,
-    double &s,
-    double &t,
-    int framewidth,
-    int frameheight) {
-
-    double u = fabs(x) / framewidth;
-    double v = fabs(y) / frameheight;
-
-    if(x >= 0 && y >= 0) {
-        s = 0.5 + u;
-        t = 0.5 + v;
-    } else if(x >= 0 && y < 0) {
-        s = 0.5 + u;
-        t = 0.5 - v;
-    } else if(x < 0 && y >= 0) {
-        s = 0.5 - u;
-        t = 0.5 + v;
-    } else if(x < 0 && y < 0) {
-        s = 0.5 - u;
-        t = 0.5 - v;
-    }
-}
-
-
-void computeSTCoordinates(float latitude, float longitude, float &s, float &t, float frameWidth, float frameHeight) {
+void Player::computeSTCoordinates(float latitude, float longitude, float &s, float &t) {
     float x, y;
     float H = frameHeight / 2;
     float R = frameHeight / sqrt(3 * M_PI);
 
-    latitude -= M_PI/2;
+    latitude -= M_PI / 2;
     longitude -= M_PI;
 
     x = sqrt(3 / M_PI) * R * longitude * (2 * cos(2 * latitude / 3) - 1);
@@ -342,7 +337,7 @@ void computeSTCoordinates(float latitude, float longitude, float &s, float &t, f
     s = x / frameWidth;
     t = y / frameHeight;
 
-    //printf("longitude:\t%f, latitude:\t%f, s:\t%f, t:\t%f\n", glm::degrees(longitude), glm::degrees(latitude), s, t);
+    printf("longtitude: %lf\t, latitude: %lf\t, s: %lf\t, t: %lf\t\n", glm::degrees(longitude), glm::degrees(latitude), s, t);
 }
 
 bool Player::setupCppCoordinates() {
@@ -372,23 +367,23 @@ bool Player::setupCppCoordinates() {
             z[0] = (float)(radius*sin(latitude)*cos(longitude));
             x[0] = (float)(radius*sin(latitude)*sin(longitude));
             y[0] = (float)(radius*cos(latitude));
-            computeSTCoordinates(latitude, longitude, u[0], v[0], this->frameWidth, this->frameHeight);
+            computeSTCoordinates(latitude, longitude, u[0], v[0]);
 
             z[1] = (float)(radius*sin(latitude + verticalInterval)*cos(longitude));
             x[1] = (float)(radius*sin(latitude + verticalInterval)*sin(longitude));
             y[1] = (float)(radius*cos(latitude + verticalInterval));
-            computeSTCoordinates(latitude + verticalInterval, longitude, u[1], v[1], this->frameWidth, frameHeight);
+            computeSTCoordinates(latitude + verticalInterval, longitude, u[1], v[1]);
 
             z[2] = (float)(radius*sin(latitude + verticalInterval)*cos(longitude + horizontalInterval));
             x[2] = (float)(radius *sin(latitude + verticalInterval)*sin(longitude + horizontalInterval));
             y[2] = (float)(radius*cos(latitude + verticalInterval));
-            computeSTCoordinates(latitude + verticalInterval, longitude + horizontalInterval, u[2], v[2], this->frameWidth, this->frameHeight);
+            computeSTCoordinates(latitude + verticalInterval, longitude + horizontalInterval, u[2], v[2]);
 
 
             z[3] = (float)(radius*sin(latitude)*cos(longitude + horizontalInterval));
             x[3] = (float)(radius*sin(latitude)*sin(longitude + horizontalInterval));
             y[3] = (float)(radius*cos(latitude));
-            computeSTCoordinates(latitude, longitude + horizontalInterval, u[3], v[3], this->frameWidth, this->frameHeight);
+            computeSTCoordinates(latitude, longitude + horizontalInterval, u[3], v[3]);
 
 
             this->vertexCoordinates[m++] = x[0];
@@ -491,6 +486,18 @@ bool Player::setupTexture() {
     return true;
 }
 
+bool Player::setupCoordinates() {
+    bool result;
+    if(this->mode == EQUAL_AREA) {
+        result = setupCppCoordinates();
+    } else if(this->mode == EQUIRECTANGULAR) {
+        result = setupSphereCoordinates();
+    } else {
+        result = false;
+    }
+    return result;
+}
+
 void Player::drawFrameCpp() {
 #ifdef CPP
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
@@ -561,13 +568,13 @@ void Player::destroyGL() {
     }
 }
 
-bool Player::setupTextureData(unsigned char *rgbData) {
+bool Player::setupTextureData(unsigned char *textureData) {
     assert(frameHeight > 0 && frameWidth > 0);
     glUseProgram(sceneProgramID);
     glCheckError();
     glBindTexture(GL_TEXTURE_2D, sceneTextureID);
     glCheckError();
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, frameWidth, frameHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, rgbData);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, frameWidth, frameHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
     glCheckError();
     return true;
 }
@@ -621,36 +628,27 @@ void Player::resizeWindow(SDL_Event& event) {
 }
 
 void Player::renderLoop() {
-    assert(projectionMode != NONE);
+    assert(mode != NOT_SPECIFIED);
     bool bQuit = false;
     SDL_StartTextInput();
     int frameIndex = 0;
     watch->Start();
     while(!bQuit) {
-        if(projectionMode == EQUIRECTANGULAR) {
-            drawFrameERP();
-        } else if(projectionMode == EQUALAREA) {
-            drawFrameCpp();
-        }
+        drawFrame();
         frameIndex++;
         bQuit = handleInput();
     }
     __int64 time = watch->elapsedMillionSecondsSinceStart();
     double average = 1.0 * time / frameIndex;
     printf("------------------------------\n");
-    printf("projection mode is: %s\n", projectionMode == EQUALAREA ? "Craster Parabolic Projection" : "Equirectangular Projection");
-    //printf("Frame count: %d.\nTotal time: %ld ms.\nAverage time: %lf\n", frameIndex, time, average);
+    printf("projection mode is: %s\n", mode == EQUAL_AREA ? "Craster Parabolic Projection" : "Equirectangular Projection");
     std::cout << "Frame count: " << frameIndex << std::endl << "Total time: " << time << " ms." << std::endl << "Average time: " << average << " ms." << std::endl;
     SDL_StopTextInput();
 }
 
 void Player::setupProjectionMode(ProjectionMode mode) {
-    this->projectionMode = mode;
-    if(this->projectionMode == EQUALAREA) {
-        setupCppCoordinates();
-    } else if(this->projectionMode == EQUIRECTANGULAR) {
-        setupSphereCoordinates();
-    }
+    this->mode = mode;
+    setupCoordinates();
 }
 
 void Player::computeMVPMatrix() {

@@ -120,7 +120,7 @@ int main(int argv, char** args) {
     int frameHeight = 1920;
     int frameWidth = 3840;
 	Player *player = new Player(frameWidth,frameHeight);
-	player->init();
+	//player->init();
 	
     uint8_t *yuvData = (uint8_t *)malloc(sizeof(uint8_t)*frameHeight*frameWidth * 3 / 2);
 	if (yuvData == NULL) {
@@ -132,14 +132,13 @@ int main(int argv, char** args) {
 		std::cout << __FUNCTION__ << " - Failed to allocate memory fro RGB data." << std::endl;
 		return 0;
 	}
-	readDataFromFile("cpp.yuv", yuvData,frameWidth, frameHeight);
+	readDataFromFile("ZSP_CPP.yuv", yuvData,frameWidth, frameHeight);
 	convertYUV2RGB(yuvData, rgbData, frameWidth, frameHeight);
-    player->setupProjectionMode(EQUALAREA);
+    player->setupProjectionMode(EQUAL_AREA);
 	player->setupTextureData(rgbData);
 	player->renderLoop();
 
-
-    readDataFromFile("line.yuv", yuvData, frameWidth, frameHeight);
+    readDataFromFile("ZSP.yuv", yuvData, frameWidth, frameHeight);
     convertYUV2RGB(yuvData, rgbData, frameWidth, frameHeight);
     player->setupProjectionMode(EQUIRECTANGULAR);
     player->setupTextureData(rgbData);
