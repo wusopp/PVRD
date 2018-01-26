@@ -77,6 +77,7 @@ private:
 	bool setupTexture();
     bool setupCoordinates();
 	bool setupSphereCoordinates();
+    bool setupCppCoordinatesOld();
     bool setupCppCoordinates();
 	bool setupMatrixes();
 	void setupProjectionMatrix();
@@ -110,12 +111,18 @@ private:
     GLuint bottomTriangleVAO;
     GLuint bottomTriangleBuffer;
     GLuint bottomUVBuffer;
-    int topVertexCount;
-    int bottomVertexCount;
-    std::vector<double> topTriangleVector;
-    std::vector<double> topUVVector;
-    std::vector<double> bottomTriangleVector;
-    std::vector<double> bottomUVVector;
+
+
+    int topTriangleVertexCount;
+    int bottomTriangleVertexCount;
+    int midTriangleVertexCount;
+
+    std::vector<float> topTriangleVector;
+    std::vector<float> topUVVector;
+    std::vector<float> bottomTriangleVector;
+    std::vector<float> bottomUVVector;
+    std::vector<float> midTriangleVector;
+    std::vector<float> midUVVector;
 
 #endif // CPP
 
@@ -133,8 +140,6 @@ private:
 
 	float *vertexCoordinates = NULL;
 	float *uvCoordinates = NULL;
-    std::vector<double> vertexVector;
-    std::vector<double> uvVector;
     int frameHeight;
     int frameWidth;
     TimeMeasurer *watch = NULL;

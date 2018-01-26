@@ -3,6 +3,8 @@
 #include <iostream>
 #define glCheckError() glCheckError_(__LINE__)
 
+#define logLine() printf("Line:%d, %s\n",__LINE__,__FUNCTION__);
+
 void glCheckError_(int line) {
     GLenum errorCode;
     char error[100];
@@ -337,12 +339,12 @@ void Player::computeSTCoordinates(float latitude, float longitude, float &s, flo
     s = x / frameWidth;
     t = y / frameHeight;
 
-    printf("longtitude: %lf\t, latitude: %lf\t, s: %lf\t, t: %lf\t\n", glm::degrees(longitude), glm::degrees(latitude), s, t);
+    //printf("longtitude: %lf\t, latitude: %lf\t, s: %lf\t, t: %lf\t\n", glm::degrees(longitude), glm::degrees(latitude), s, t);
 }
 
-bool Player::setupCppCoordinates() {
+bool Player::setupCppCoordinatesOld() {
     glCheckError();
-    this->vertexCount = this->patchNumbers * this->patchNumbers * 3;
+    this->vertexCount = (this->patchNumbers) * (this->patchNumbers/2) * 6;
     this->vertexCoordinates = new float[this->vertexCount * 3 * sizeof(float)];
     this->uvCoordinates = new float[this->vertexCount * 2 * sizeof(float)];
 
@@ -443,6 +445,213 @@ bool Player::setupCppCoordinates() {
     return true;
 }
 
+bool Player::setupCppCoordinates() {
+    glCheckError();
+
+    int radius = 10;
+    int pieces = this->patchNumbers;
+    int halfPieces = pieces / 2;
+
+    double verticalInterval = M_PI / halfPieces;
+    double horizontalInterval = verticalInterval;
+
+    double latitude, longitude;
+    float z[4] = { 0.0f };
+    float x[4] = { 0.0f };
+    float y[4] = { 0.0f };
+    float u[4] = { 0.0f };
+    float v[4] = { 0.0f };
+
+
+    /**
+     * 首先是设置南极点
+     */
+    latitude = 0.0; longitude = (halfPieces+1)*verticalInterval;
+    z[0] = (float)(radius*sin(latitude)*cos(longitude));
+    x[0] = (float)(radius*sin(latitude)*sin(longitude));
+    y[0] = (float)(radius*cos(latitude));
+    
+    computeSTCoordinates(latitude, longitude, u[0], v[0]);
+    this->bottomTriangleVector.push_back(x[0]);
+    this->bottomTriangleVector.push_back(y[0]);
+    this->bottomTriangleVector.push_back(z[0]);
+    this->bottomUVVector.push_back(u[0]);
+    this->bottomUVVector.push_back(v[0]);
+
+    /**
+     * 设置南极圈的顶点坐标
+     */
+    latitude = verticalInterval * 1;
+    for(int horizontalIndex = 0; horizontalIndex < pieces; horizontalIndex++) {
+        longitude = horizontalIndex * horizontalInterval;
+        z[0] = (float)(radius*sin(latitude)*cos(longitude));
+        x[0] = (float)(radius*sin(latitude)*sin(longitude));
+        y[0] = (float)(radius*cos(latitude));
+        computeSTCoordinates(latitude, longitude, u[0], v[0]);
+
+        this->bottomTriangleVector.push_back(x[0]);
+        this->bottomTriangleVector.push_back(y[0]);
+        this->bottomTriangleVector.push_back(z[0]);
+        this->bottomUVVector.push_back(u[0]);
+        this->bottomUVVector.push_back(v[0]);
+    }
+
+    this->topTriangleVertexCount = this->topTriangleVector.size()/3;
+    
+
+    /**
+     * 设置中间一圈的顶点坐标
+     */
+    for(int verticalIndex = 1; verticalIndex <= halfPieces - 2; verticalIndex++) {
+        latitude = verticalIndex * verticalInterval;
+
+        for(int horizontalIndex = 0; horizontalIndex < pieces; horizontalIndex++) {
+            longitude = horizontalIndex * horizontalInterval;
+
+            z[0] = (float)(radius*sin(latitude)*cos(longitude));
+            x[0] = (float)(radius*sin(latitude)*sin(longitude));
+            y[0] = (float)(radius*cos(latitude));
+            computeSTCoordinates(latitude, longitude, u[0], v[0]);
+
+            z[1] = (float)(radius*sin(latitude + verticalInterval)*cos(longitude));
+            x[1] = (float)(radius*sin(latitude + verticalInterval)*sin(longitude));
+            y[1] = (float)(radius*cos(latitude + verticalInterval));
+            computeSTCoordinates(latitude + verticalInterval, longitude, u[1], v[1]);
+
+            z[2] = (float)(radius*sin(latitude + verticalInterval)*cos(longitude + horizontalInterval));
+            x[2] = (float)(radius *sin(latitude + verticalInterval)*sin(longitude + horizontalInterval));
+            y[2] = (float)(radius*cos(latitude + verticalInterval));
+            computeSTCoordinates(latitude + verticalInterval, longitude + horizontalInterval, u[2], v[2]);
+
+
+            z[3] = (float)(radius*sin(latitude)*cos(longitude + horizontalInterval));
+            x[3] = (float)(radius*sin(latitude)*sin(longitude + horizontalInterval));
+            y[3] = (float)(radius*cos(latitude));
+            computeSTCoordinates(latitude, longitude + horizontalInterval, u[3], v[3]);
+
+            this->midTriangleVector.push_back(x[0]);
+            this->midTriangleVector.push_back(y[0]);
+            this->midTriangleVector.push_back(z[0]);
+            this->midUVVector.push_back(u[0]);
+            this->midUVVector.push_back(v[0]);
+
+            this->midTriangleVector.push_back(x[1]);
+            this->midTriangleVector.push_back(y[1]);
+            this->midTriangleVector.push_back(z[1]);
+            this->midUVVector.push_back(u[1]);
+            this->midUVVector.push_back(v[1]);
+
+            this->midTriangleVector.push_back(x[2]);
+            this->midTriangleVector.push_back(y[2]);
+            this->midTriangleVector.push_back(z[2]);
+            this->midUVVector.push_back(u[2]);
+            this->midUVVector.push_back(v[2]);
+
+            this->midTriangleVector.push_back(x[2]);
+            this->midTriangleVector.push_back(y[2]);
+            this->midTriangleVector.push_back(z[2]);
+            this->midUVVector.push_back(u[2]);
+            this->midUVVector.push_back(v[2]);
+
+            this->midTriangleVector.push_back(x[3]);
+            this->midTriangleVector.push_back(y[3]);
+            this->midTriangleVector.push_back(z[3]);
+            this->midUVVector.push_back(u[3]);
+            this->midUVVector.push_back(v[3]);
+
+            this->midTriangleVector.push_back(x[0]);
+            this->midTriangleVector.push_back(y[0]);
+            this->midTriangleVector.push_back(z[0]);
+            this->midUVVector.push_back(u[0]);
+            this->midUVVector.push_back(v[0]);
+        }
+    }
+
+    this->midTriangleVertexCount = this->midTriangleVector.size() / 3;
+    /**
+     * 设置北极圈的顶点坐标
+     */
+    latitude = verticalInterval * (halfPieces - 2);
+    for(int horizontalIndex = 0; horizontalIndex < pieces; horizontalIndex++) {
+        longitude = horizontalIndex * horizontalInterval;
+        z[0] = (float)(radius*sin(latitude)*cos(longitude));
+        x[0] = (float)(radius*sin(latitude)*sin(longitude));
+        y[0] = (float)(radius*cos(latitude));
+        computeSTCoordinates(latitude, longitude, u[0], v[0]);
+        this->topTriangleVector.push_back(x[0]);
+        this->topTriangleVector.push_back(y[0]);
+        this->topTriangleVector.push_back(z[0]);
+        this->topUVVector.push_back(u[0]);
+        this->topUVVector.push_back(v[0]);
+    }
+
+    /**
+     * 设置北极点的顶点坐标
+     */
+    latitude = (halfPieces-1)*verticalInterval; longitude = (halfPieces + 1)*verticalInterval;
+    z[0] = (float)(radius*sin(latitude)*cos(longitude));
+    x[0] = (float)(radius*sin(latitude)*sin(longitude));
+    y[0] = (float)(radius*cos(latitude));
+
+    computeSTCoordinates(latitude, longitude, u[0], v[0]);
+    this->topTriangleVector.push_back(x[0]);
+    this->topTriangleVector.push_back(y[0]);
+    this->topTriangleVector.push_back(z[0]);
+    this->topUVVector.push_back(u[0]);
+    this->topUVVector.push_back(v[0]);
+
+    this->topTriangleVertexCount = this->topTriangleVector.size() / 3;
+
+
+    glGenVertexArrays(1, &bottomTriangleVAO);
+    
+    glBindVertexArray(bottomTriangleVAO);
+    int vertexSize = this->bottomTriangleVector.size() * sizeof(float);
+    int uvSize = this->bottomUVVector.size() * sizeof(float);
+
+    glGenBuffers(1, &bottomTriangleBuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, bottomTriangleBuffer);
+    glBufferData(GL_ARRAY_BUFFER, vertexSize, &this->bottomTriangleVector[0], GL_STATIC_DRAW);
+    
+    glGenBuffers(1, &bottomUVBuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, bottomUVBuffer);
+    glBufferData(GL_ARRAY_BUFFER, uvSize, &this->bottomUVVector[0], GL_STATIC_DRAW);
+    
+    glBindVertexArray(0);
+
+    glGenVertexArrays(1, &sceneVAO);
+    glBindVertexArray(sceneVAO);
+
+    vertexSize = this->midTriangleVector.size() * sizeof(float);
+    uvSize = this->midUVVector.size() * sizeof(float);
+
+    glGenBuffers(1, &sceneVertBuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, sceneVertBuffer);
+    glBufferData(GL_ARRAY_BUFFER, vertexSize, &this->midTriangleVector[0], GL_STATIC_DRAW);
+
+    glGenBuffers(1, &sceneUVBuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, sceneUVBuffer);
+    glBufferData(GL_ARRAY_BUFFER, uvSize, &this->midUVVector[0], GL_STATIC_DRAW);
+    glBindVertexArray(0);
+
+    glGenVertexArrays(1, &topTriangleVAO);
+    glBindVertexArray(topTriangleVAO);
+
+    vertexSize = this->topTriangleVector.size() * sizeof(float);
+    uvSize = this->topUVVector.size() * sizeof(float);
+
+    glGenBuffers(1, &topTriangleBuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, topTriangleBuffer);
+    glBufferData(GL_ARRAY_BUFFER, vertexSize, &this->topTriangleVector[0], GL_STATIC_DRAW);
+    
+    glGenBuffers(1, &topUVBuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, topUVBuffer);
+    glBufferData(GL_ARRAY_BUFFER, uvSize, &this->topUVVector[0], GL_STATIC_DRAW);
+    glBindVertexArray(0);
+
+    return true;
+}
+
 bool Player::setupShaders() {
     glCheckError();
     sceneProgramID = glCreateProgram();
@@ -487,6 +696,7 @@ bool Player::setupTexture() {
 }
 
 bool Player::setupCoordinates() {
+
     bool result;
     if(this->mode == EQUAL_AREA) {
         result = setupCppCoordinates();
@@ -499,7 +709,6 @@ bool Player::setupCoordinates() {
 }
 
 void Player::drawFrameCpp() {
-#ifdef CPP
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glViewport(0, 0, pWindowWidth, pWindowHeight);
@@ -512,24 +721,54 @@ void Player::drawFrameCpp() {
     glCheckError();
 
     glUniformMatrix4fv(sceneMVPMatrixPointer, 1, GL_FALSE, &mvpMatrix[0][0]);
-    // 绘制中部的矩形
-    glCheckError();
-    glBindVertexArray(sceneVAO);
 
+    glCheckError();
+    glBindVertexArray(topTriangleVAO);
+    glCheckError();
+    glBindBuffer(GL_ARRAY_BUFFER, topTriangleBuffer);
+    glCheckError();
+    glEnableVertexAttribArray(0);
+    glCheckError();
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (const void*)0);
+    glCheckError();
+    
+    glBindBuffer(GL_ARRAY_BUFFER, topUVBuffer);
+    glCheckError();
+    glEnableVertexAttribArray(1);
+    glCheckError();
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, (const void *)0);
+    glCheckError();
+    glDrawArrays(GL_TRIANGLE_FAN, 0, this->topTriangleVertexCount);
+    glCheckError();
+    glBindVertexArray(0);
+    glCheckError();
+
+    glBindVertexArray(sceneVAO);
     glBindBuffer(GL_ARRAY_BUFFER, sceneVertBuffer);
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (const void *)0);
-
+    glCheckError();
     glBindBuffer(GL_ARRAY_BUFFER, sceneUVBuffer);
     glEnableVertexAttribArray(1);
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, (const void *)0);
-
+    glCheckError();
     glDrawArrays(GL_TRIANGLES, 0, this->vertexCount);
+    glBindVertexArray(0);
+    glCheckError();
+
+    glBindVertexArray(bottomTriangleVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, bottomTriangleBuffer);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (const void *)0);
+    glCheckError();
+    glBindBuffer(GL_ARRAY_BUFFER, bottomUVBuffer);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, (const void *)0);
+    glDrawArrays(GL_TRIANGLE_FAN, 0, this->bottomTriangleVertexCount);
     glBindVertexArray(0);
     glCheckError();
     SDL_GL_SwapWindow(pWindow);
     glCheckError();
-#endif 
 }
 
 void Player::drawFrameERP() {
@@ -640,9 +879,9 @@ void Player::renderLoop() {
     }
     __int64 time = watch->elapsedMillionSecondsSinceStart();
     double average = 1.0 * time / frameIndex;
-    printf("------------------------------\n");
-    printf("projection mode is: %s\n", mode == EQUAL_AREA ? "Craster Parabolic Projection" : "Equirectangular Projection");
-    std::cout << "Frame count: " << frameIndex << std::endl << "Total time: " << time << " ms." << std::endl << "Average time: " << average << " ms." << std::endl;
+    //printf("------------------------------\n");
+    //printf("projection mode is: %s\n", mode == EQUAL_AREA ? "Craster Parabolic Projection" : "Equirectangular Projection");
+    //std::cout << "Frame count: " << frameIndex << std::endl << "Total time: " << time << " ms." << std::endl << "Average time: " << average << " ms." << std::endl;
     SDL_StopTextInput();
 }
 
