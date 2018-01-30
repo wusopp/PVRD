@@ -11,7 +11,7 @@
 #include "gtc/constants.hpp"
 #include <vector>
 
-#define CPP 1
+#define CPP 0
 enum ProjectionMode {
     EQUIRECTANGULAR,
     EQUAL_AREA,
@@ -77,6 +77,7 @@ private:
 	bool setupTexture();
     bool setupCoordinates();
 	bool setupSphereCoordinates();
+    bool setupCppCoordinates_();
     bool setupCppCoordinates();
 	bool setupMatrixes();
 	void setupProjectionMatrix();
@@ -98,26 +99,11 @@ private:
 	GLuint sceneProgramID;
 	GLuint sceneTextureID;
 	GLint sceneMVPMatrixPointer;
+
 	GLuint sceneVAO;
 	GLuint sceneVertBuffer;
 	GLuint sceneUVBuffer;
-
-#ifdef CPP
-    GLuint topTriangleVAO;
-    GLuint topTriangleBuffer;
-    GLuint topUVBuffer;
-
-    GLuint bottomTriangleVAO;
-    GLuint bottomTriangleBuffer;
-    GLuint bottomUVBuffer;
-    int topVertexCount;
-    int bottomVertexCount;
-    std::vector<double> topTriangleVector;
-    std::vector<double> topUVVector;
-    std::vector<double> bottomTriangleVector;
-    std::vector<double> bottomUVVector;
-
-#endif // CPP
+    GLuint sceneIndexBuffer;
 
 	int pPreviousXposition;
 	int pPreviousYposition;
@@ -131,10 +117,12 @@ private:
 	float lon;
 	float lat;
 
-	float *vertexCoordinates = NULL;
-	float *uvCoordinates = NULL;
-    std::vector<double> vertexVector;
-    std::vector<double> uvVector;
+	float *vertexArray = NULL;
+	float *uvArray = NULL;
+    int *indexArray = NULL;
+
+    int indexArraySize;
+
     int frameHeight;
     int frameWidth;
     TimeMeasurer *watch = NULL;

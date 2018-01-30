@@ -3,6 +3,8 @@
 #include <iostream>
 #define glCheckError() glCheckError_(__LINE__)
 
+#define logLine() printf("Line:%d, %s\n",__LINE__,__FUNCTION__);
+
 void glCheckError_(int line) {
     GLenum errorCode;
     char error[100];
@@ -63,21 +65,27 @@ void addShader(int type, const char * source, int program) {
     glDeleteShader(shader);
 }
 
-Player::Player(int numberOfPatches):
+Player::Player(int numberOfPatches) :
     pWindow(NULL),
     pContext(NULL),
     mode(NOT_SPECIFIED),
-    watch(new TimeMeasurer()) {
+    watch(new TimeMeasurer()),
+    vertexArray(NULL),
+    uvArray(NULL),
+    indexArray(NULL){
     this->patchNumbers = numberOfPatches;
     init();
 }
 
-Player::Player(int width, int height):
+Player::Player(int width, int height) :
     pWindow(NULL),
     pContext(NULL),
     mode(NOT_SPECIFIED),
     patchNumbers(128),
     watch(new TimeMeasurer()),
+    vertexArray(NULL),
+    uvArray(NULL),
+    indexArray(NULL),
     frameWidth(width),
     frameHeight(height) {
     init();
@@ -89,23 +97,29 @@ Player::Player(int width, int height, int numberOfPatches) :
     mode(NOT_SPECIFIED),
     patchNumbers(numberOfPatches),
     watch(new TimeMeasurer()),
+    vertexArray(NULL),
+    uvArray(NULL),
+    indexArray(NULL),
     frameWidth(width),
     frameHeight(height) {
     init();
 }
 
 Player::~Player() {
-    if(vertexCoordinates != NULL) {
-        delete[] vertexCoordinates;
-        vertexCoordinates = NULL;
+    if(vertexArray != NULL) {
+        delete[] vertexArray;
+        vertexArray = NULL;
     }
-    if(uvCoordinates != NULL) {
-        delete[] uvCoordinates;
-        uvCoordinates = NULL;
+    if(uvArray != NULL) {
+        delete[] uvArray;
+        uvArray = NULL;
     }
     destroyGL();
 }
 
+/**
+ * Player的初始化函数
+ */
 bool Player::init() {
     if(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER) < 0) {
         std::cout << __FUNCTION__ << "- SDL could not initialize! SDL Error: " << SDL_GetError() << std::endl;
@@ -125,7 +139,7 @@ bool Player::init() {
     SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 0);
     SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 0);
 
-    pWindow = SDL_CreateWindow("Display CPP", windowPosX, windowPosY, pWindowWidth, pWindowHeight, windowFlags);
+    pWindow = SDL_CreateWindow("Panoramic Video Player", windowPosX, windowPosY, pWindowWidth, pWindowHeight, windowFlags);
 
     if(pWindow == NULL) {
         std::cout << __FUNCTION__ << "- Window could not be created! SDL Error: " << SDL_GetError() << std::endl;
@@ -166,6 +180,9 @@ bool Player::init() {
     return true;
 }
 
+/**
+ * 根据鼠标位置计算观察矩阵
+ */
 void Player::computeViewMatrix() {
     int distanceX = pCurrentXposition - pPreviousXposition;
     int distanceY = pCurrentYposition - pPreviousYposition;
@@ -189,7 +206,9 @@ void Player::computeViewMatrix() {
 }
 
 
-
+/**
+ * 初始化MVP矩阵
+ */
 bool Player::setupMatrixes() {
     modelMatrix = glm::mat4(1.0f);
 
@@ -208,6 +227,9 @@ void Player::setupProjectionMatrix() {
     projectMatrix = glm::perspective(45.0f, aspect, 0.1f, 40.0f);
 }
 
+/**
+ * 根据投影格式来调用不同的渲染方法
+ */
 void Player::drawFrame() {
     if(mode == EQUIRECTANGULAR) {
         drawFrameERP();
@@ -216,11 +238,21 @@ void Player::drawFrame() {
     }
 }
 
+/**
+* 设置绘制ERP格式视频的球体模型的坐标，不使用索引
+*/
 bool Player::setupSphereCoordinates() {
     glCheckError();
     this->vertexCount = this->patchNumbers * this->patchNumbers * 3;
-    this->vertexCoordinates = new float[this->vertexCount * 3 * sizeof(float)];
-    this->uvCoordinates = new float[this->vertexCount * 2 * sizeof(float)];
+
+    if(this->vertexArray) {
+        delete[] this->vertexArray;
+        this->vertexArray = new float[this->vertexCount * 3];
+    }
+    if(this->uvArray) {
+        delete[] this->uvArray;
+        this->uvArray = new float[this->vertexCount * 2];
+    }
 
     int radius = 10;
     int pieces = this->patchNumbers;
@@ -263,41 +295,41 @@ bool Player::setupSphereCoordinates() {
             u[3] = (float)(horizontalIndex + 1) / pieces;
             v[3] = (float)verticalIndex / halfPieces;
 
-            this->vertexCoordinates[m++] = x[0];
-            this->vertexCoordinates[m++] = y[0];
-            this->vertexCoordinates[m++] = z[0];
-            this->uvCoordinates[n++] = u[0];
-            this->uvCoordinates[n++] = v[0];
+            this->vertexArray[m++] = x[0];
+            this->vertexArray[m++] = y[0];
+            this->vertexArray[m++] = z[0];
+            this->uvArray[n++] = u[0];
+            this->uvArray[n++] = v[0];
 
-            this->vertexCoordinates[m++] = x[1];
-            this->vertexCoordinates[m++] = y[1];
-            this->vertexCoordinates[m++] = z[1];
-            this->uvCoordinates[n++] = u[1];
-            this->uvCoordinates[n++] = v[1];
+            this->vertexArray[m++] = x[1];
+            this->vertexArray[m++] = y[1];
+            this->vertexArray[m++] = z[1];
+            this->uvArray[n++] = u[1];
+            this->uvArray[n++] = v[1];
 
-            this->vertexCoordinates[m++] = x[2];
-            this->vertexCoordinates[m++] = y[2];
-            this->vertexCoordinates[m++] = z[2];
-            this->uvCoordinates[n++] = u[2];
-            this->uvCoordinates[n++] = v[2];
+            this->vertexArray[m++] = x[2];
+            this->vertexArray[m++] = y[2];
+            this->vertexArray[m++] = z[2];
+            this->uvArray[n++] = u[2];
+            this->uvArray[n++] = v[2];
 
-            this->vertexCoordinates[m++] = x[2];
-            this->vertexCoordinates[m++] = y[2];
-            this->vertexCoordinates[m++] = z[2];
-            this->uvCoordinates[n++] = u[2];
-            this->uvCoordinates[n++] = v[2];
+            this->vertexArray[m++] = x[2];
+            this->vertexArray[m++] = y[2];
+            this->vertexArray[m++] = z[2];
+            this->uvArray[n++] = u[2];
+            this->uvArray[n++] = v[2];
 
-            this->vertexCoordinates[m++] = x[3];
-            this->vertexCoordinates[m++] = y[3];
-            this->vertexCoordinates[m++] = z[3];
-            this->uvCoordinates[n++] = u[3];
-            this->uvCoordinates[n++] = v[3];
+            this->vertexArray[m++] = x[3];
+            this->vertexArray[m++] = y[3];
+            this->vertexArray[m++] = z[3];
+            this->uvArray[n++] = u[3];
+            this->uvArray[n++] = v[3];
 
-            this->vertexCoordinates[m++] = x[0];
-            this->vertexCoordinates[m++] = y[0];
-            this->vertexCoordinates[m++] = z[0];
-            this->uvCoordinates[n++] = u[0];
-            this->uvCoordinates[n++] = v[0];
+            this->vertexArray[m++] = x[0];
+            this->vertexArray[m++] = y[0];
+            this->vertexArray[m++] = z[0];
+            this->uvArray[n++] = u[0];
+            this->uvArray[n++] = v[0];
         }
     }
 
@@ -309,17 +341,20 @@ bool Player::setupSphereCoordinates() {
 
     glGenBuffers(1, &sceneVertBuffer);
     glBindBuffer(GL_ARRAY_BUFFER, sceneVertBuffer);
-    glBufferData(GL_ARRAY_BUFFER, vertexSize, this->vertexCoordinates, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, vertexSize, this->vertexArray, GL_STATIC_DRAW);
 
     glGenBuffers(1, &sceneUVBuffer);
     glBindBuffer(GL_ARRAY_BUFFER, sceneUVBuffer);
-    glBufferData(GL_ARRAY_BUFFER, uvSize, this->uvCoordinates, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, uvSize, this->uvArray, GL_STATIC_DRAW);
 
     glBindVertexArray(0);
     glCheckError();
     return true;
 }
 
+/**
+ * 根据球体上点的经纬度，计算对应的纹理坐标
+ */
 void Player::computeSTCoordinates(float latitude, float longitude, float &s, float &t) {
     float x, y;
     float H = frameHeight / 2;
@@ -337,14 +372,24 @@ void Player::computeSTCoordinates(float latitude, float longitude, float &s, flo
     s = x / frameWidth;
     t = y / frameHeight;
 
-    printf("longtitude: %lf\t, latitude: %lf\t, s: %lf\t, t: %lf\t\n", glm::degrees(longitude), glm::degrees(latitude), s, t);
+    //printf("longtitude: %lf\t, latitude: %lf\t, s: %lf\t, t: %lf\t\n", glm::degrees(longitude), glm::degrees(latitude), s, t);
 }
 
-bool Player::setupCppCoordinates() {
+
+/**
+ * 设置绘制CPP格式视频的球体模型的坐标，不使用索引
+ */
+bool Player::setupCppCoordinates_() {
     glCheckError();
-    this->vertexCount = this->patchNumbers * this->patchNumbers * 3;
-    this->vertexCoordinates = new float[this->vertexCount * 3 * sizeof(float)];
-    this->uvCoordinates = new float[this->vertexCount * 2 * sizeof(float)];
+    this->vertexCount = (this->patchNumbers) * (this->patchNumbers / 2) * 6;
+    if(this->vertexArray) {
+        delete[] this->vertexArray;
+        this->vertexArray = new float[this->vertexCount * 3];
+    }
+    if(this->uvArray) {
+        delete[] this->uvArray;
+        this->uvArray = new float[this->vertexCount * 2];
+    }
 
     int radius = 10;
     int pieces = this->patchNumbers;
@@ -359,6 +404,8 @@ bool Player::setupCppCoordinates() {
     float u[4] = { 0.0f };
     float v[4] = { 0.0f };
     int m = 0, n = 0;
+
+   
     for(int verticalIndex = 0; verticalIndex < halfPieces; verticalIndex++) {
         latitude = verticalIndex * verticalInterval;
         for(int horizontalIndex = 0; horizontalIndex < pieces; horizontalIndex++) {
@@ -386,41 +433,41 @@ bool Player::setupCppCoordinates() {
             computeSTCoordinates(latitude, longitude + horizontalInterval, u[3], v[3]);
 
 
-            this->vertexCoordinates[m++] = x[0];
-            this->vertexCoordinates[m++] = y[0];
-            this->vertexCoordinates[m++] = z[0];
-            this->uvCoordinates[n++] = u[0];
-            this->uvCoordinates[n++] = v[0];
+            this->vertexArray[m++] = x[0];
+            this->vertexArray[m++] = y[0];
+            this->vertexArray[m++] = z[0];
+            this->uvArray[n++] = u[0];
+            this->uvArray[n++] = v[0];
 
-            this->vertexCoordinates[m++] = x[1];
-            this->vertexCoordinates[m++] = y[1];
-            this->vertexCoordinates[m++] = z[1];
-            this->uvCoordinates[n++] = u[1];
-            this->uvCoordinates[n++] = v[1];
+            this->vertexArray[m++] = x[1];
+            this->vertexArray[m++] = y[1];
+            this->vertexArray[m++] = z[1];
+            this->uvArray[n++] = u[1];
+            this->uvArray[n++] = v[1];
 
-            this->vertexCoordinates[m++] = x[2];
-            this->vertexCoordinates[m++] = y[2];
-            this->vertexCoordinates[m++] = z[2];
-            this->uvCoordinates[n++] = u[2];
-            this->uvCoordinates[n++] = v[2];
+            this->vertexArray[m++] = x[2];
+            this->vertexArray[m++] = y[2];
+            this->vertexArray[m++] = z[2];
+            this->uvArray[n++] = u[2];
+            this->uvArray[n++] = v[2];
 
-            this->vertexCoordinates[m++] = x[2];
-            this->vertexCoordinates[m++] = y[2];
-            this->vertexCoordinates[m++] = z[2];
-            this->uvCoordinates[n++] = u[2];
-            this->uvCoordinates[n++] = v[2];
+            this->vertexArray[m++] = x[2];
+            this->vertexArray[m++] = y[2];
+            this->vertexArray[m++] = z[2];
+            this->uvArray[n++] = u[2];
+            this->uvArray[n++] = v[2];
 
-            this->vertexCoordinates[m++] = x[3];
-            this->vertexCoordinates[m++] = y[3];
-            this->vertexCoordinates[m++] = z[3];
-            this->uvCoordinates[n++] = u[3];
-            this->uvCoordinates[n++] = v[3];
+            this->vertexArray[m++] = x[3];
+            this->vertexArray[m++] = y[3];
+            this->vertexArray[m++] = z[3];
+            this->uvArray[n++] = u[3];
+            this->uvArray[n++] = v[3];
 
-            this->vertexCoordinates[m++] = x[0];
-            this->vertexCoordinates[m++] = y[0];
-            this->vertexCoordinates[m++] = z[0];
-            this->uvCoordinates[n++] = u[0];
-            this->uvCoordinates[n++] = v[0];
+            this->vertexArray[m++] = x[0];
+            this->vertexArray[m++] = y[0];
+            this->vertexArray[m++] = z[0];
+            this->uvArray[n++] = u[0];
+            this->uvArray[n++] = v[0];
         }
     }
 
@@ -432,17 +479,126 @@ bool Player::setupCppCoordinates() {
 
     glGenBuffers(1, &sceneVertBuffer);
     glBindBuffer(GL_ARRAY_BUFFER, sceneVertBuffer);
-    glBufferData(GL_ARRAY_BUFFER, vertexSize, this->vertexCoordinates, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, vertexSize, this->vertexArray, GL_STATIC_DRAW);
 
     glGenBuffers(1, &sceneUVBuffer);
     glBindBuffer(GL_ARRAY_BUFFER, sceneUVBuffer);
-    glBufferData(GL_ARRAY_BUFFER, uvSize, this->uvCoordinates, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, uvSize, this->uvArray, GL_STATIC_DRAW);
 
     glBindVertexArray(0);
     glCheckError();
     return true;
 }
 
+/**
+* 设置绘制CPP格式视频的球体模型的坐标，使用索引
+*/
+bool Player::setupCppCoordinates() {
+    glCheckError();
+
+    int radius = 10;
+    int pieces = this->patchNumbers;
+    int halfPieces = pieces / 2;
+
+    this->vertexCount = ((halfPieces+1) * (pieces+1));
+    if(indexArray) {
+        delete[] indexArray;
+    }
+    if(this->vertexArray) {
+        delete[] this->vertexArray;
+    }
+    if(this->uvArray) {
+        delete[] this->uvArray;
+    }
+
+    this->indexArraySize = (pieces)*(halfPieces) * 6;
+    this->vertexArray = new float[this->vertexCount * 3];
+    this->uvArray = new float[this->vertexCount * 2];
+    this->indexArray = new int[this->indexArraySize];
+    
+
+    double verticalInterval = M_PI / halfPieces;
+    double horizontalInterval = verticalInterval;
+
+    double latitude, longitude;
+    float z[4] = { 0.0f };
+    float x[4] = { 0.0f };
+    float y[4] = { 0.0f };
+    float u[4] = { 0.0f };
+    float v[4] = { 0.0f };
+    float xt, yt, zt;
+    float ut, vt;
+
+    int m = 0, n = 0;
+    for(int verticalIndex = 0; verticalIndex <= halfPieces; verticalIndex++) {
+        latitude = verticalIndex * verticalInterval;
+        for(int horizontalIndex = 0; horizontalIndex <= pieces; horizontalIndex++) {
+            longitude = horizontalIndex * horizontalInterval;
+
+            zt = (float)(radius*sin(latitude)*cos(longitude));
+            xt = (float)(radius*sin(latitude)*sin(longitude));
+            yt = (float)(radius*cos(latitude));
+
+            computeSTCoordinates(latitude, longitude, ut, vt);            
+            this->vertexArray[m++] = xt;
+            this->vertexArray[m++] = yt;
+            this->vertexArray[m++] = zt;
+            this->uvArray[n++] = ut;
+            this->uvArray[n++] = vt;
+        }
+    }
+
+    m = 0;
+    for(int i = 1; i <= halfPieces; i++) {
+        for(int j = 0; j <= pieces-1; j++) {
+            // 第index个矩形,0-1-2, 2-3-0
+            // 1---2
+            // |  /|
+            // | / |
+            // |/  |
+            // 0---3
+            int index = i * (pieces + 1) + j;
+            indexArray[m++] = (i - 1) * (pieces + 1) + j;
+            indexArray[m++] = i *(pieces + 1) + j;
+            indexArray[m++] = i * (pieces + 1) + j + 1;
+            indexArray[m++] = i * (pieces + 1) + j + 1;
+            indexArray[m++] = (i - 1)*(pieces + 1) + j + 1;
+            indexArray[m++] = (i - 1) * (pieces + 1) + j;
+        }
+    }
+
+    /*for(int i = 0; i < m; i += 3) {
+        printf("%d, %d, %d\n", indexVector[i], indexVector[i + 1], indexVector[i + 2]);
+    }*/
+
+    glGenVertexArrays(1, &sceneVAO);
+    glBindVertexArray(sceneVAO);
+
+    int vertexBufferSize = this->vertexCount * 3 * sizeof(float);
+    int uvBufferSize = this->vertexCount * 2 * sizeof(float);
+    int indexBufferSize = this->indexArraySize * sizeof(int);
+
+    glGenBuffers(1, &sceneVertBuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, sceneVertBuffer);
+    glBufferData(GL_ARRAY_BUFFER, vertexBufferSize, this->vertexArray, GL_STATIC_DRAW);
+
+    glGenBuffers(1, &sceneUVBuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, sceneUVBuffer);
+    glBufferData(GL_ARRAY_BUFFER, uvBufferSize, this->uvArray, GL_STATIC_DRAW);
+
+    glGenBuffers(1, &sceneIndexBuffer);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, sceneIndexBuffer);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indexBufferSize, this->indexArray, GL_STATIC_DRAW);
+
+    glBindVertexArray(0);
+    glCheckError();
+    return true;
+}
+
+
+/**
+ * 编译顶点着色器与片元着色器
+ */
 bool Player::setupShaders() {
     glCheckError();
     sceneProgramID = glCreateProgram();
@@ -468,6 +624,9 @@ bool Player::setupShaders() {
     return true;
 }
 
+/**
+ * 设置纹理参数
+ */
 bool Player::setupTexture() {
     glUseProgram(sceneProgramID);
     glGenTextures(1, &sceneTextureID);
@@ -486,7 +645,11 @@ bool Player::setupTexture() {
     return true;
 }
 
+/**
+ * 根据视频的投影格式来设置球体模型的顶点坐标与纹理坐标
+ */
 bool Player::setupCoordinates() {
+
     bool result;
     if(this->mode == EQUAL_AREA) {
         result = setupCppCoordinates();
@@ -498,8 +661,10 @@ bool Player::setupCoordinates() {
     return result;
 }
 
+/**
+ * 绘制投影格式为CPP的视频帧
+ */
 void Player::drawFrameCpp() {
-#ifdef CPP
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glViewport(0, 0, pWindowWidth, pWindowHeight);
@@ -512,8 +677,7 @@ void Player::drawFrameCpp() {
     glCheckError();
 
     glUniformMatrix4fv(sceneMVPMatrixPointer, 1, GL_FALSE, &mvpMatrix[0][0]);
-    // 绘制中部的矩形
-    glCheckError();
+
     glBindVertexArray(sceneVAO);
 
     glBindBuffer(GL_ARRAY_BUFFER, sceneVertBuffer);
@@ -524,14 +688,18 @@ void Player::drawFrameCpp() {
     glEnableVertexAttribArray(1);
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, (const void *)0);
 
-    glDrawArrays(GL_TRIANGLES, 0, this->vertexCount);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, sceneIndexBuffer);
+
+    glDrawElements(GL_TRIANGLE_STRIP, this->indexArraySize, GL_UNSIGNED_INT, (const void *)0);
+
     glBindVertexArray(0);
-    glCheckError();
     SDL_GL_SwapWindow(pWindow);
     glCheckError();
-#endif 
 }
 
+/**
+ * 绘制投影格式为ERP的视频帧
+ */
 void Player::drawFrameERP() {
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -562,12 +730,19 @@ void Player::drawFrameERP() {
     glCheckError();
 }
 
+
+/**
+ * 销毁OpenGL上下文
+ */
 void Player::destroyGL() {
     if(sceneProgramID) {
         glDeleteProgram(sceneProgramID);
     }
 }
 
+/**
+ * 设置视频帧数据
+ */
 bool Player::setupTextureData(unsigned char *textureData) {
     assert(frameHeight > 0 && frameWidth > 0);
     glUseProgram(sceneProgramID);
@@ -579,6 +754,9 @@ bool Player::setupTextureData(unsigned char *textureData) {
     return true;
 }
 
+/**
+ * 处理键盘输入、鼠标拖拽、窗口放缩等事件
+ */
 bool Player::handleInput() {
     SDL_Event event;
     bool willExit = false;
@@ -619,6 +797,9 @@ bool Player::handleInput() {
     return willExit;
 }
 
+/**
+ * 处理窗口的放缩事件，重新设置视点
+ */
 void Player::resizeWindow(SDL_Event& event) {
     pWindowWidth = event.window.data1;
     pWindowHeight = event.window.data2;
@@ -627,6 +808,9 @@ void Player::resizeWindow(SDL_Event& event) {
     computeMVPMatrix();
 }
 
+/**
+ * 主渲染循环
+ */
 void Player::renderLoop() {
     assert(mode != NOT_SPECIFIED);
     bool bQuit = false;
@@ -640,17 +824,24 @@ void Player::renderLoop() {
     }
     __int64 time = watch->elapsedMillionSecondsSinceStart();
     double average = 1.0 * time / frameIndex;
-    printf("------------------------------\n");
+    
     printf("projection mode is: %s\n", mode == EQUAL_AREA ? "Craster Parabolic Projection" : "Equirectangular Projection");
     std::cout << "Frame count: " << frameIndex << std::endl << "Total time: " << time << " ms." << std::endl << "Average time: " << average << " ms." << std::endl;
+    printf("------------------------------\n");
     SDL_StopTextInput();
 }
 
+/**
+ * 设置视频的投影格式
+ */
 void Player::setupProjectionMode(ProjectionMode mode) {
     this->mode = mode;
     setupCoordinates();
 }
 
+/**
+ * 计算MVP矩阵
+ */
 void Player::computeMVPMatrix() {
     mvpMatrix = projectMatrix * viewMatrix * modelMatrix;
 }
