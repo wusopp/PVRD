@@ -11,7 +11,7 @@
 #include "gtc/constants.hpp"
 #include <vector>
 
-#define CPP 1
+#define CPP 0
 enum ProjectionMode {
     EQUIRECTANGULAR,
     EQUAL_AREA,
@@ -77,7 +77,7 @@ private:
 	bool setupTexture();
     bool setupCoordinates();
 	bool setupSphereCoordinates();
-    bool setupCppCoordinatesOld();
+    bool setupCppCoordinates_();
     bool setupCppCoordinates();
 	bool setupMatrixes();
 	void setupProjectionMatrix();
@@ -99,32 +99,11 @@ private:
 	GLuint sceneProgramID;
 	GLuint sceneTextureID;
 	GLint sceneMVPMatrixPointer;
+
 	GLuint sceneVAO;
 	GLuint sceneVertBuffer;
 	GLuint sceneUVBuffer;
-
-#ifdef CPP
-    GLuint topTriangleVAO;
-    GLuint topTriangleBuffer;
-    GLuint topUVBuffer;
-
-    GLuint bottomTriangleVAO;
-    GLuint bottomTriangleBuffer;
-    GLuint bottomUVBuffer;
-
-
-    int topTriangleVertexCount;
-    int bottomTriangleVertexCount;
-    int midTriangleVertexCount;
-
-    std::vector<float> topTriangleVector;
-    std::vector<float> topUVVector;
-    std::vector<float> bottomTriangleVector;
-    std::vector<float> bottomUVVector;
-    std::vector<float> midTriangleVector;
-    std::vector<float> midUVVector;
-
-#endif // CPP
+    GLuint sceneIndexBuffer;
 
 	int pPreviousXposition;
 	int pPreviousYposition;
@@ -138,8 +117,12 @@ private:
 	float lon;
 	float lat;
 
-	float *vertexCoordinates = NULL;
-	float *uvCoordinates = NULL;
+	float *vertexArray = NULL;
+	float *uvArray = NULL;
+    int *indexArray = NULL;
+
+    int indexArraySize;
+
     int frameHeight;
     int frameWidth;
     TimeMeasurer *watch = NULL;

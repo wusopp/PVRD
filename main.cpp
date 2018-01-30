@@ -2,91 +2,89 @@
 #include "yuvConverter.h"
 #include <fstream>
 void readDataFromFile(const char *fileName, unsigned char *yuvData, int frameWidth, int frameHeight) {
-	if (yuvData == NULL) {
-		return;
-	}
+    if(yuvData == NULL) {
+        return;
+    }
     size_t size = frameWidth * frameHeight * 3 / 2;
     FILE *pf = fopen(fileName, "rb+");
     fread(yuvData, 1, size, pf);
     fclose(pf);
-	return;
+    return;
 }
 
 void convertYUV2RGB(unsigned char *yuvData, unsigned char *rgbData, int frameWidth, int frameHeight) {
-	if (frameWidth < 1 || frameHeight < 1 || yuvData == NULL || rgbData == NULL) {
-		return;
-	}
-	yuv420p_to_rgb24(yuvData, rgbData, frameWidth, frameHeight);
+    if(frameWidth < 1 || frameHeight < 1 || yuvData == NULL || rgbData == NULL) {
+        return;
+    }
+    yuv420p_to_rgb24(yuvData, rgbData, frameWidth, frameHeight);
 }
 
 void rgb24ToBMP(unsigned char *rgbBuffer, int width, int height, const char *bmppath) {
-	typedef struct
-	{
-		long imageSize;
-		long blank;
-		long startPosition;
-	}BmpHead;
+    typedef struct {
+        long imageSize;
+        long blank;
+        long startPosition;
+    } BmpHead;
 
-	typedef struct
-	{
-		long  Length;
-		long  width;
-		long  height;
-		unsigned short  colorPlane;
-		unsigned short  bitColor;
-		long  zipFormat;
-		long  realSize;
-		long  xPels;
-		long  yPels;
-		long  colorUse;
-		long  colorImportant;
-	}InfoHead;
+    typedef struct {
+        long  Length;
+        long  width;
+        long  height;
+        unsigned short  colorPlane;
+        unsigned short  bitColor;
+        long  zipFormat;
+        long  realSize;
+        long  xPels;
+        long  yPels;
+        long  colorUse;
+        long  colorImportant;
+    } InfoHead;
 
-	int i = 0, j = 0;
-	BmpHead m_BMPHeader = { 0 };
-	InfoHead  m_BMPInfoHeader = { 0 };
-	char bfType[2] = { 'B','M' };
-	int header_size = sizeof(bfType) + sizeof(BmpHead) + sizeof(InfoHead);
-	FILE *fp_bmp = NULL;
+    int i = 0, j = 0;
+    BmpHead m_BMPHeader = { 0 };
+    InfoHead  m_BMPInfoHeader = { 0 };
+    char bfType[2] = { 'B','M' };
+    int header_size = sizeof(bfType) + sizeof(BmpHead) + sizeof(InfoHead);
+    FILE *fp_bmp = NULL;
 
-	if ((fp_bmp = fopen(bmppath, "wb")) == NULL) {
-		printf("Error: Cannot open output BMP file.\n");
-		return;
-	}
+    if((fp_bmp = fopen(bmppath, "wb")) == NULL) {
+        printf("Error: Cannot open output BMP file.\n");
+        return;
+    }
 
-	m_BMPHeader.imageSize = 3 * width*height + header_size;
-	m_BMPHeader.startPosition = header_size;
+    m_BMPHeader.imageSize = 3 * width*height + header_size;
+    m_BMPHeader.startPosition = header_size;
 
-	m_BMPInfoHeader.Length = sizeof(InfoHead);
-	m_BMPInfoHeader.width = width;
-	//BMP storage pixel data in opposite direction of Y-axis (from bottom to top).  
-	m_BMPInfoHeader.height = -height;
-	m_BMPInfoHeader.colorPlane = 1;
-	m_BMPInfoHeader.bitColor = 24;
-	m_BMPInfoHeader.realSize = 3 * width*height;
+    m_BMPInfoHeader.Length = sizeof(InfoHead);
+    m_BMPInfoHeader.width = width;
+    //BMP storage pixel data in opposite direction of Y-axis (from bottom to top).  
+    m_BMPInfoHeader.height = -height;
+    m_BMPInfoHeader.colorPlane = 1;
+    m_BMPInfoHeader.bitColor = 24;
+    m_BMPInfoHeader.realSize = 3 * width*height;
 
-	fwrite(bfType, 1, sizeof(bfType), fp_bmp);
-	fwrite(&m_BMPHeader, 1, sizeof(m_BMPHeader), fp_bmp);
-	fwrite(&m_BMPInfoHeader, 1, sizeof(m_BMPInfoHeader), fp_bmp);
+    fwrite(bfType, 1, sizeof(bfType), fp_bmp);
+    fwrite(&m_BMPHeader, 1, sizeof(m_BMPHeader), fp_bmp);
+    fwrite(&m_BMPInfoHeader, 1, sizeof(m_BMPInfoHeader), fp_bmp);
 
-	//BMP save R1|G1|B1,R2|G2|B2 as B1|G1|R1,B2|G2|R2  
-	//It saves pixel data in Little Endian  
-	//So we change 'R' and 'B'  
-	for (j = 0; j<height; j++) {
-		for (i = 0; i<width; i++) {
-			char temp = rgbBuffer[(j*width + i) * 3 + 2];
-			rgbBuffer[(j*width + i) * 3 + 2] = rgbBuffer[(j*width + i) * 3 + 0];
-			rgbBuffer[(j*width + i) * 3 + 0] = temp;
-		}
-	}
-	fwrite(rgbBuffer, 3 * width*height, 1, fp_bmp);
-	fclose(fp_bmp);
-	printf("Finish generate %s!\n", bmppath);
-	return;
+    //BMP save R1|G1|B1,R2|G2|B2 as B1|G1|R1,B2|G2|R2  
+    //It saves pixel data in Little Endian  
+    //So we change 'R' and 'B'  
+    for(j = 0; j < height; j++) {
+        for(i = 0; i < width; i++) {
+            char temp = rgbBuffer[(j*width + i) * 3 + 2];
+            rgbBuffer[(j*width + i) * 3 + 2] = rgbBuffer[(j*width + i) * 3 + 0];
+            rgbBuffer[(j*width + i) * 3 + 0] = temp;
+        }
+    }
+    fwrite(rgbBuffer, 3 * width*height, 1, fp_bmp);
+    fclose(fp_bmp);
+    printf("Finish generate %s!\n", bmppath);
+    return;
 }
 
 void YV12ToBGR24_Native(uint8_t* pYUV, uint8_t* pBGR24, int width, int height) {
-    if (width < 1 || height < 1 || pYUV == NULL || pBGR24 == NULL)
+    if(width < 1 || height < 1 || pYUV == NULL || pBGR24 == NULL)
         return;
     const long len = width * height;
     unsigned char* yData = pYUV;
@@ -95,8 +93,8 @@ void YV12ToBGR24_Native(uint8_t* pYUV, uint8_t* pBGR24, int width, int height) {
 
     int bgr[3];
     int yIdx, uIdx, vIdx, idx;
-    for (int i = 0; i < height; i++) {
-        for (int j = 0; j < width; j++) {
+    for(int i = 0; i < height; i++) {
+        for(int j = 0; j < width; j++) {
             yIdx = i * width + j;
             vIdx = (i / 2) * (width / 2) + (j / 2);
             uIdx = vIdx;
@@ -104,9 +102,9 @@ void YV12ToBGR24_Native(uint8_t* pYUV, uint8_t* pBGR24, int width, int height) {
             bgr[1] = (int)(yData[yIdx] - (((uData[vIdx] - 128) * 88) >> 8) - (((vData[vIdx] - 128) * 183) >> 8));    // g·ÖÁ¿
             bgr[2] = (int)(yData[yIdx] + (vData[uIdx] - 128) + (((vData[uIdx] - 128) * 103) >> 8));
 
-            for (int k = 0; k < 3; k++) {
+            for(int k = 0; k < 3; k++) {
                 idx = (i * width + j) * 3 + k;
-                if (bgr[k] >= 0 && bgr[k] <= 255)
+                if(bgr[k] >= 0 && bgr[k] <= 255)
                     pBGR24[idx] = bgr[k];
                 else
                     pBGR24[idx] = (bgr[k] < 0) ? 0 : 255;
@@ -117,26 +115,38 @@ void YV12ToBGR24_Native(uint8_t* pYUV, uint8_t* pBGR24, int width, int height) {
 }
 
 int main(int argv, char** args) {
+
+    int patches;
+    if(argv == 1) {
+        patches = 128;
+    } else {
+        patches = atoi(args[1]);
+        if(patches == 0) {
+            printf("Error: patches number not valid!\n");
+            return 0;
+        }
+    }
+    
     int frameHeight = 1920;
     int frameWidth = 3840;
-	Player *player = new Player(frameWidth,frameHeight);
-	//player->init();
-	
+    Player *player = new Player(frameWidth, frameHeight, patches);
+
     uint8_t *yuvData = (uint8_t *)malloc(sizeof(uint8_t)*frameHeight*frameWidth * 3 / 2);
-	if (yuvData == NULL) {
-		std::cout << __FUNCTION__ << " - Failed to allocate memory fro YUV data." << std::endl;
-		return 0;
-	}
+    if(yuvData == NULL) {
+        std::cout << __FUNCTION__ << " - Failed to allocate memory fro YUV data." << std::endl;
+        return 0;
+    }
     uint8_t *rgbData = (uint8_t *)malloc(sizeof(uint8_t)*frameHeight*frameWidth * 3);
-	if (rgbData == NULL) {
-		std::cout << __FUNCTION__ << " - Failed to allocate memory fro RGB data." << std::endl;
-		return 0;
-	}
-	readDataFromFile("ZSP_CPP.yuv", yuvData,frameWidth, frameHeight);
-	convertYUV2RGB(yuvData, rgbData, frameWidth, frameHeight);
+    if(rgbData == NULL) {
+        std::cout << __FUNCTION__ << " - Failed to allocate memory fro RGB data." << std::endl;
+        return 0;
+    }
+
+    readDataFromFile("cpp.yuv", yuvData, frameWidth, frameHeight);
+    convertYUV2RGB(yuvData, rgbData, frameWidth, frameHeight);
     player->setupProjectionMode(EQUAL_AREA);
-	player->setupTextureData(rgbData);
-	player->renderLoop();
+    player->setupTextureData(rgbData);
+    player->renderLoop();
 
     readDataFromFile("ZSP.yuv", yuvData, frameWidth, frameHeight);
     convertYUV2RGB(yuvData, rgbData, frameWidth, frameHeight);
@@ -144,10 +154,10 @@ int main(int argv, char** args) {
     player->setupTextureData(rgbData);
     player->renderLoop();
 
-    printf("Will exit.\n");
-	free(yuvData);
-	free(rgbData);
+
+    free(yuvData);
+    free(rgbData);
     delete player;
-	return 0;
+    return 0;
 }
 
