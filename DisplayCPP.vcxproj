@@ -157,10 +157,12 @@
   <ItemGroup>
     <ClCompile Include="Player.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="TimeMeasurer.cpp" />
     <ClCompile Include="yuvConverter.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Player.h" />
+    <ClInclude Include="TimeMeasurer.h" />
     <ClInclude Include="yuvConverter.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

@@ -7,88 +7,67 @@
 #include <SDL_opengl.h>
 #include <glm.hpp>
 #include <gtc/type_ptr.hpp>
-#include "gtc/matrix_transform.hpp"
-#include "gtc/constants.hpp"
 #include <vector>
 
-#define CPP 0
+#include "gtc/matrix_transform.hpp"
+#include "gtc/constants.hpp"
+#include "TimeMeasurer.h"
+
+
 enum ProjectionMode {
-    EQUIRECTANGULAR,
+    EQUIRECTANGULAR = 0,
     EQUAL_AREA,
-    NOT_SPECIFIED
+    PM_NOT_SPECIFIED
 };
 
+enum DrawMode {
+    USE_INDEX = 0,
+    DONT_USE_INDEX,
+    DM_NOT_SPECTIFIED
+};
 
-class TimeMeasurer {
-public:
-    TimeMeasurer() {
-        QueryPerformanceFrequency(&freq);
-    }
-
-    void Start() {
-        QueryPerformanceCounter(&start);
-    }
-
-    /**
-     * 返回从Start()开始到Now()之间经过的时间，以毫秒(ms)为单位
-     */
-    __int64 elapsedMillionSecondsSinceStart() {
-        LARGE_INTEGER now;
-        QueryPerformanceCounter(&now);
-        return (((now.QuadPart - start.QuadPart) * 1000) / freq.QuadPart);
-    }
-
-    /**
-     * 返回从Start()开始到Now()之间经过的时间，以微秒(us)为单位
-     */
-    __int64 elapsedMicroSecondsSinceStart() {
-        LARGE_INTEGER now;
-        QueryPerformanceCounter(&now);
-        return ((now.QuadPart - start.QuadPart) * 1000000 / freq.QuadPart);
-    }
-
-    __int64 elapsedTimeInMillionSeconds(void (*func)()) {
-        QueryPerformanceCounter(&start);
-        func();
-        LARGE_INTEGER now;
-        QueryPerformanceCounter(&now);
-        return (((now.QuadPart - start.QuadPart) * 1000) / freq.QuadPart);
-    }
-
-private:
-    LARGE_INTEGER freq;
-    LARGE_INTEGER start;
+struct Vertex {
+    double x;
+    double y;
+    double z;
+    double u;
+    double v;
+    int index;
 };
 
 class Player {
-    
 public:
 	Player(int numberOfPatches);
-    Player(int width, int height);
-    Player(int width, int height, int numberOfPatches);
+    //Player(int width, int height);
+    Player(int width, int height, int numberOfPatches = 128);
     ~Player();
 	bool setupTextureData(unsigned char *textureData);
 	void renderLoop();
-    void setupProjectionMode(ProjectionMode mode);
+    void setupMode(ProjectionMode projection, DrawMode draw);
 private:
     bool init();
     void destroyGL();
 	bool setupShaders();
 	bool setupTexture();
     bool setupCoordinates();
-	bool setupSphereCoordinates();
-    bool setupCppCoordinates_();
+    bool setupERPCoordinatesWithIndex();
+	bool setupERPCoordinatesWithoutIndex();
+    bool setupCPPCoordinatesWithoutIndex();
+    bool setupCPPCoordinatesWithIndex();
     bool setupCppCoordinates();
 	bool setupMatrixes();
 	void setupProjectionMatrix();
     void drawFrame();
-	void drawFrameERP();
-    void drawFrameCpp();
+	void drawFrameERPWithoutIndex();
+    void drawFrameERPWithIndex();
+    void drawFrameCPPWithIndex();
+    void drawFrameCPPWithoutIndex();
 	bool handleInput();
 	void resizeWindow(SDL_Event& event);
 	void computeMVPMatrix();
 	void computeViewMatrix();
     void computeSTCoordinates(float latitude, float longitude, float &s, float &t);
+    void computeSTCoordinates(double latitude, double longitude, double &u, double &v);
 private:
     SDL_Window *pWindow = NULL;
 	SDL_GLContext pContext;
@@ -111,7 +90,7 @@ private:
 	int pCurrentYposition;
 	int pWindowHeight;
 	int pWindowWidth;
-	int vertexCount;
+	
 	int patchNumbers;
 
 	float lon;
@@ -120,11 +99,16 @@ private:
 	float *vertexArray = NULL;
 	float *uvArray = NULL;
     int *indexArray = NULL;
-
+    int vertexCount;
     int indexArraySize;
 
+    std::vector<double> vertexVector;
+    std::vector<double> uvVector;
+    std::vector<int> indexVector;
+    
     int frameHeight;
     int frameWidth;
-    TimeMeasurer *watch = NULL;
-    ProjectionMode mode;
+    TimeMeasurer *timeMeasurer = NULL;
+    ProjectionMode projectionMode;
+    DrawMode drawMode;
 };

@@ -24,12 +24,18 @@
     <ClCompile Include="Player.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="TimeMeasurer.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="yuvConverter.h">
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="Player.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="TimeMeasurer.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>

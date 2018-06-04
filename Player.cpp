@@ -68,8 +68,9 @@ void addShader(int type, const char * source, int program) {
 Player::Player(int numberOfPatches) :
     pWindow(NULL),
     pContext(NULL),
-    mode(NOT_SPECIFIED),
-    watch(new TimeMeasurer()),
+    projectionMode(PM_NOT_SPECIFIED),
+    drawMode(DM_NOT_SPECTIFIED),
+    timeMeasurer(new TimeMeasurer()),
     vertexArray(NULL),
     uvArray(NULL),
     indexArray(NULL){
@@ -77,26 +78,27 @@ Player::Player(int numberOfPatches) :
     init();
 }
 
-Player::Player(int width, int height) :
-    pWindow(NULL),
-    pContext(NULL),
-    mode(NOT_SPECIFIED),
-    patchNumbers(128),
-    watch(new TimeMeasurer()),
-    vertexArray(NULL),
-    uvArray(NULL),
-    indexArray(NULL),
-    frameWidth(width),
-    frameHeight(height) {
-    init();
-}
+//Player::Player(int width, int height) :
+//    pWindow(NULL),
+//    pContext(NULL),
+//    mode(NOT_SPECIFIED),
+//    patchNumbers(128),
+//    timeMeasurer(new TimeMeasurer()),
+//    vertexArray(NULL),
+//    uvArray(NULL),
+//    indexArray(NULL),
+//    frameWidth(width),
+//    frameHeight(height) {
+//    init();
+//}
 
 Player::Player(int width, int height, int numberOfPatches) :
     pWindow(NULL),
     pContext(NULL),
-    mode(NOT_SPECIFIED),
+    projectionMode(PM_NOT_SPECIFIED),
+    drawMode(DM_NOT_SPECTIFIED),
     patchNumbers(numberOfPatches),
-    watch(new TimeMeasurer()),
+    timeMeasurer(new TimeMeasurer()),
     vertexArray(NULL),
     uvArray(NULL),
     indexArray(NULL),
@@ -231,28 +233,133 @@ void Player::setupProjectionMatrix() {
  * 根据投影格式来调用不同的渲染方法
  */
 void Player::drawFrame() {
-    if(mode == EQUIRECTANGULAR) {
-        drawFrameERP();
-    } else if(mode == EQUAL_AREA) {
-        drawFrameCpp();
+    if(projectionMode == EQUIRECTANGULAR) {
+        if(drawMode == USE_INDEX) {
+            drawFrameERPWithIndex();
+        } else {
+            drawFrameERPWithoutIndex();
+        }
+        
+    } else if(projectionMode == EQUAL_AREA) {
+        if(drawMode == USE_INDEX) {
+            drawFrameCPPWithIndex();
+        } else {
+            drawFrameCPPWithoutIndex();
+        }
     }
 }
+
+
+bool Player::setupERPCoordinatesWithIndex() {
+    glCheckError();
+
+    int radius = 10;
+    int pieces = this->patchNumbers;
+    int halfPieces = pieces / 2;
+
+    this->vertexCount = ((halfPieces + 1) * (pieces+1));
+    if(indexArray) {
+        delete[] indexArray;
+    }
+    if(this->vertexArray) {
+        delete[] this->vertexArray;
+    }
+    if(this->uvArray) {
+        delete[] this->uvArray;
+    }
+
+    this->indexArraySize = (pieces)*(halfPieces) * 6;
+    this->vertexArray = new float[this->vertexCount * 3];
+    this->uvArray = new float[this->vertexCount * 2];
+    this->indexArray = new int[this->indexArraySize];
+
+    double verticalInterval = M_PI / halfPieces;
+    double horizontalInterval = verticalInterval;
+
+    double latitude, longitude;
+    float xt, yt, zt;
+    float ut, vt;
+
+    int m = 0, n = 0;
+    for(int verticalIndex = 0; verticalIndex <= halfPieces; verticalIndex++) {
+        latitude = verticalIndex * verticalInterval;
+        for(int horizontalIndex = 0; horizontalIndex <= pieces; horizontalIndex++) {
+            longitude = horizontalIndex * horizontalInterval;
+
+            zt = (float)(radius*sin(latitude)*cos(longitude));
+            xt = (float)(radius*sin(latitude)*sin(longitude));
+            yt = (float)(radius*cos(latitude));
+
+            ut = 1.0f * horizontalIndex / pieces;
+            vt = 1.0f * verticalIndex / pieces;
+            this->vertexArray[m++] = xt;
+            this->vertexArray[m++] = yt;
+            this->vertexArray[m++] = zt;
+            this->uvArray[n++] = ut;
+            this->uvArray[n++] = vt;
+        }
+    }
+
+    m = 0;
+    for(int i = 1; i <= halfPieces; i++) {
+        for(int j = 0; j <= pieces - 1; j++) {
+            // 第index个矩形,0-1-2, 2-3-0
+            // 1---2
+            // |  /|
+            // | / |
+            // |/  |
+            // 0---3
+            indexArray[m++] = (i - 1) * (pieces + 1) + j;
+            indexArray[m++] = i * (pieces + 1) + j;
+            indexArray[m++] = i * (pieces + 1) + j + 1;
+            indexArray[m++] = i * (pieces + 1) + j + 1;
+            indexArray[m++] = (i - 1) * (pieces + 1) + j + 1;
+            indexArray[m++] = (i - 1) * (pieces + 1) + j;
+        }
+    }
+
+    glGenVertexArrays(1, &sceneVAO);
+    glBindVertexArray(sceneVAO);
+
+    int vertexBufferSize = this->vertexCount * 3 * sizeof(float);
+    int uvBufferSize = this->vertexCount * 2 * sizeof(float);
+    int indexBufferSize = this->indexArraySize * sizeof(int);
+
+    glGenBuffers(1, &sceneVertBuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, sceneVertBuffer);
+    glBufferData(GL_ARRAY_BUFFER, vertexBufferSize, this->vertexArray, GL_STATIC_DRAW);
+
+    glGenBuffers(1, &sceneUVBuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, sceneUVBuffer);
+    glBufferData(GL_ARRAY_BUFFER, uvBufferSize, this->uvArray, GL_STATIC_DRAW);
+
+    glGenBuffers(1, &sceneIndexBuffer);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, sceneIndexBuffer);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indexBufferSize, this->indexArray, GL_STATIC_DRAW);
+
+
+    glBindVertexArray(0);
+    glCheckError();
+    return true;
+}
+
 
 /**
 * 设置绘制ERP格式视频的球体模型的坐标，不使用索引
 */
-bool Player::setupSphereCoordinates() {
+bool Player::setupERPCoordinatesWithoutIndex() {
     glCheckError();
     this->vertexCount = this->patchNumbers * this->patchNumbers * 3;
 
     if(this->vertexArray) {
         delete[] this->vertexArray;
-        this->vertexArray = new float[this->vertexCount * 3];
     }
     if(this->uvArray) {
         delete[] this->uvArray;
-        this->uvArray = new float[this->vertexCount * 2];
     }
+    this->vertexArray = new float[this->vertexCount * 3];
+    this->uvArray = new float[this->vertexCount * 2];
+
 
     int radius = 10;
     int pieces = this->patchNumbers;
@@ -376,20 +483,39 @@ void Player::computeSTCoordinates(float latitude, float longitude, float &s, flo
 }
 
 
+void Player::computeSTCoordinates(double latitude, double longitude, double &u, double &v) {
+    double x, y;
+    double H = frameHeight / 2;
+    double R = frameHeight / sqrt(3 * M_PI);
+
+    latitude -= M_PI / 2;
+    longitude -= M_PI;
+
+    x = sqrt(3 / M_PI) * R * longitude * (2 * cos(2 * latitude / 3) - 1);
+    y = sqrt(3 * M_PI) * R * sin(latitude / 3);
+
+    x += frameWidth / 2;
+    y += frameHeight / 2;
+
+    u = x / frameWidth;
+    v = y / frameHeight;
+}
+
 /**
  * 设置绘制CPP格式视频的球体模型的坐标，不使用索引
  */
-bool Player::setupCppCoordinates_() {
+bool Player::setupCPPCoordinatesWithoutIndex()
+{
     glCheckError();
     this->vertexCount = (this->patchNumbers) * (this->patchNumbers / 2) * 6;
     if(this->vertexArray) {
-        delete[] this->vertexArray;
-        this->vertexArray = new float[this->vertexCount * 3];
+        delete[] this->vertexArray;  
     }
+    this->vertexArray = new float[this->vertexCount * 3];
     if(this->uvArray) {
         delete[] this->uvArray;
-        this->uvArray = new float[this->vertexCount * 2];
     }
+    this->uvArray = new float[this->vertexCount * 2];
 
     int radius = 10;
     int pieces = this->patchNumbers;
@@ -405,7 +531,6 @@ bool Player::setupCppCoordinates_() {
     float v[4] = { 0.0f };
     int m = 0, n = 0;
 
-   
     for(int verticalIndex = 0; verticalIndex < halfPieces; verticalIndex++) {
         latitude = verticalIndex * verticalInterval;
         for(int horizontalIndex = 0; horizontalIndex < pieces; horizontalIndex++) {
@@ -491,9 +616,207 @@ bool Player::setupCppCoordinates_() {
 }
 
 /**
-* 设置绘制CPP格式视频的球体模型的坐标，使用索引
-*/
+ * 设置绘制CPP格式视频的球体模型的坐标，使用索引
+ */
 bool Player::setupCppCoordinates() {
+
+    // 设置顶点坐标、纹理坐标与索引
+    glCheckError();
+    int radius = 10;
+    int pieces = 16;
+    int halfPieces = pieces / 2;
+
+    double verticalInterval = M_PI / halfPieces;
+    double horizontalInterval = verticalInterval;
+
+    double latitude, longitude;
+    double x, y, z;
+    double u, v;
+   
+    int index = 0;
+
+    // 设置北极点
+    latitude = 0; longitude = 0;
+    z = radius * sin(latitude) * cos(longitude);
+    x = radius * sin(latitude) * sin(longitude);
+    y = radius * cos(latitude);
+
+    computeSTCoordinates(latitude, longitude, u, v);
+    this->vertexVector.push_back(x);
+    this->vertexVector.push_back(y);
+    this->vertexVector.push_back(z);
+    this->uvVector.push_back(u);
+    this->uvVector.push_back(v);
+
+
+
+    for(int i = 1; i < halfPieces / 4; i += 2) {
+        latitude = i * verticalInterval;
+
+        for(int j = 0; j < pieces; j += 2) {
+            longitude = j * horizontalInterval;
+
+            z = radius * sin(latitude) * cos(longitude);
+            x = radius * sin(latitude) * sin(longitude);
+            y = radius * cos(latitude);
+
+            computeSTCoordinates(latitude, longitude, u, v);
+            this->vertexVector.push_back(x);
+            this->vertexVector.push_back(y);
+            this->vertexVector.push_back(z);
+            this->uvVector.push_back(u);
+            this->uvVector.push_back(v);
+
+            index++;
+        }
+    }
+    for(int i = halfPieces / 4; i < halfPieces * 3 / 4; i++) {
+        latitude = i * verticalInterval;
+        for(int j = 0; j < pieces; j ++) {
+            longitude = j * horizontalInterval;
+
+            z = radius * sin(latitude) * cos(longitude);
+            x = radius * sin(latitude) * sin(longitude);
+            y = radius * cos(latitude);
+
+            computeSTCoordinates(latitude, longitude, u, v);
+            this->vertexVector.push_back(x);
+            this->vertexVector.push_back(y);
+            this->vertexVector.push_back(z);
+            this->uvVector.push_back(u);
+            this->uvVector.push_back(v);
+
+            index++;
+        }
+    }
+
+    for(int i = halfPieces * 3 / 4; i < halfPieces; i++) {
+        latitude = i * verticalInterval;
+        for(int j = 0; j < pieces; j += 2) {
+            longitude = j * horizontalInterval;
+
+            z = radius * sin(latitude) * cos(longitude);
+            x = radius * sin(latitude) * sin(longitude);
+            y = radius * cos(latitude);
+
+            computeSTCoordinates(latitude, longitude, u, v);
+            this->vertexVector.push_back(x);
+            this->vertexVector.push_back(y);
+            this->vertexVector.push_back(z);
+            this->uvVector.push_back(u);
+            this->uvVector.push_back(v);
+
+            index++;
+        }
+    }
+    
+
+    // 设置南极点
+    latitude = halfPieces * verticalInterval;
+    longitude = 0;
+    z = radius * sin(latitude) * cos(longitude);
+    x = radius * sin(latitude) * sin(longitude);
+    y = radius * cos(latitude);
+
+    computeSTCoordinates(latitude, longitude, u, v);
+    this->vertexVector.push_back(x);
+    this->vertexVector.push_back(y);
+    this->vertexVector.push_back(z);
+    this->uvVector.push_back(u);
+    this->uvVector.push_back(v);
+
+    index++;
+
+
+    int lastIndex = 0;
+    // 设置北极圈
+    for(int i = 1; i <= halfPieces - 1; i++) {
+        this->indexVector.push_back(0);
+        this->indexVector.push_back(i);
+        this->indexVector.push_back(i + 1);
+    }
+
+    for(int i = 0; i <= halfPieces / 8 - 1; i++) {
+        for(int j = 1; j <= halfPieces - 1; j++) {
+            index = halfPieces * i + j-1 + lastIndex;
+            this->indexVector.push_back(index + halfPieces);
+            this->indexVector.push_back(index);
+            this->indexVector.push_back(index + 1);
+            this->indexVector.push_back(index + 1);
+            this->indexVector.push_back(index + halfPieces + 2);
+            this->indexVector.push_back(index+halfPieces);
+        }
+    }
+
+    // 疏密相间的一层要单独处理
+    for(int i = halfPieces / 4; i < halfPieces * 3 / 4; i++) {
+        for(int j = 1; j <= pieces - 1; j++) {
+            index = (i - 1)*halfPieces + j;
+
+            this->indexVector.push_back(index + pieces);
+            this->indexVector.push_back(index);
+            this->indexVector.push_back(index + 1);
+            this->indexVector.push_back(index + 1);
+            this->indexVector.push_back(index + pieces + 1);
+            this->indexVector.push_back(index + pieces);
+        }
+    }
+     
+    lastIndex = 72;
+    for(int i = halfPieces * 3 / 4; i < halfPieces-1; i++) {
+        for(int j = 1; j <= halfPieces - 1; j++) {
+            index = (i - 1) * halfPieces + j + lastIndex;
+            this->indexVector.push_back(index + halfPieces);
+            this->indexVector.push_back(index);
+            this->indexVector.push_back(index + 2);
+            this->indexVector.push_back(index + 2);
+            this->indexVector.push_back(index + halfPieces + 1);
+            this->indexVector.push_back(index + halfPieces);
+        }
+    }
+
+    lastIndex = 80;
+    for(int j = 1; j <= halfPieces - 1; j++) {
+        index = j + lastIndex;
+        this->indexVector.push_back(index);
+        this->indexVector.push_back(index + 1);
+        this->indexVector.push_back(89);
+    }
+
+    for(int i = 0; i < indexVector.size(); i += 3) {
+        printf("%d %d %d\n", this->indexVector[i], this->indexVector[i + 1], this->indexVector[i + 2]);
+    }
+
+    glGenVertexArrays(1, &sceneVAO);
+    glBindVertexArray(sceneVAO);
+
+    int vertexBufferSize = this->vertexVector.size() * sizeof(double);
+    int uvBufferSize = this->uvVector.size() * sizeof(double);
+    int indexBufferSize = this->indexVector.size() * sizeof(int);
+
+    glGenBuffers(1, &sceneVertBuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, sceneVertBuffer);
+    glBufferData(GL_ARRAY_BUFFER, vertexBufferSize, &this->vertexVector[0], GL_STATIC_DRAW);
+
+    glGenBuffers(1, &sceneUVBuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, sceneUVBuffer);
+    glBufferData(GL_ARRAY_BUFFER, uvBufferSize, &this->uvVector[0], GL_STATIC_DRAW);
+
+    glGenBuffers(1, &sceneIndexBuffer);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, sceneIndexBuffer);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indexBufferSize, &this->indexVector[0], GL_STATIC_DRAW);
+
+    glBindVertexArray(0);
+    glCheckError();
+
+    return true;
+}
+
+
+/**
+ * 设置绘制CPP格式视频的球体模型的坐标，使用索引
+ */
+bool Player::setupCPPCoordinatesWithIndex() {
     glCheckError();
 
     int radius = 10;
@@ -521,11 +844,6 @@ bool Player::setupCppCoordinates() {
     double horizontalInterval = verticalInterval;
 
     double latitude, longitude;
-    float z[4] = { 0.0f };
-    float x[4] = { 0.0f };
-    float y[4] = { 0.0f };
-    float u[4] = { 0.0f };
-    float v[4] = { 0.0f };
     float xt, yt, zt;
     float ut, vt;
 
@@ -559,17 +877,14 @@ bool Player::setupCppCoordinates() {
             // 0---3
             int index = i * (pieces + 1) + j;
             indexArray[m++] = (i - 1) * (pieces + 1) + j;
-            indexArray[m++] = i *(pieces + 1) + j;
+            indexArray[m++] = i * (pieces + 1) + j;
             indexArray[m++] = i * (pieces + 1) + j + 1;
             indexArray[m++] = i * (pieces + 1) + j + 1;
-            indexArray[m++] = (i - 1)*(pieces + 1) + j + 1;
+            indexArray[m++] = (i - 1) * (pieces + 1) + j + 1;
             indexArray[m++] = (i - 1) * (pieces + 1) + j;
         }
     }
 
-    /*for(int i = 0; i < m; i += 3) {
-        printf("%d, %d, %d\n", indexVector[i], indexVector[i + 1], indexVector[i + 2]);
-    }*/
 
     glGenVertexArrays(1, &sceneVAO);
     glBindVertexArray(sceneVAO);
@@ -646,25 +961,61 @@ bool Player::setupTexture() {
 }
 
 /**
- * 根据视频的投影格式来设置球体模型的顶点坐标与纹理坐标
+ * 根据视频的投影格式和绘制格式来设置球体模型的顶点坐标与纹理坐标，默认是无索引，ERP
  */
 bool Player::setupCoordinates() {
 
     bool result;
-    if(this->mode == EQUAL_AREA) {
-        result = setupCppCoordinates();
-    } else if(this->mode == EQUIRECTANGULAR) {
-        result = setupSphereCoordinates();
+    if(this->projectionMode == EQUAL_AREA) {
+        if(this->drawMode == USE_INDEX) {
+            result = setupCPPCoordinatesWithIndex();
+        } else {
+            result = setupCPPCoordinatesWithoutIndex();
+        }
     } else {
-        result = false;
+        if(this->drawMode == USE_INDEX) {
+            result = setupERPCoordinatesWithIndex();
+        } else {
+            result = setupERPCoordinatesWithoutIndex();
+        }
     }
     return result;
 }
 
+void Player::drawFrameERPWithIndex() {
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glViewport(0, 0, pWindowWidth, pWindowHeight);
+    glDisable(GL_DEPTH_TEST);
+
+    computeMVPMatrix();
+    glUseProgram(sceneProgramID);
+
+    glBindTexture(GL_TEXTURE_2D, sceneTextureID);
+    glCheckError();
+
+    glUniformMatrix4fv(sceneMVPMatrixPointer, 1, GL_FALSE, &mvpMatrix[0][0]);
+    glBindVertexArray(sceneVAO);
+
+    glBindBuffer(GL_ARRAY_BUFFER, sceneVertBuffer);
+    glEnableVertexAttribArray(0); 
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (const void *)0);
+
+    glBindBuffer(GL_ARRAY_BUFFER, sceneUVBuffer);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, (const void *)0);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, sceneIndexBuffer);
+    glDrawElements(GL_TRIANGLES, this->indexArraySize, GL_UNSIGNED_INT, (const void *)0);
+
+    glBindVertexArray(0);
+    SDL_GL_SwapWindow(pWindow);
+    glCheckError();
+}
 /**
  * 绘制投影格式为CPP的视频帧
  */
-void Player::drawFrameCpp() {
+void Player::drawFrameCPPWithIndex() {
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glViewport(0, 0, pWindowWidth, pWindowHeight);
@@ -690,7 +1041,42 @@ void Player::drawFrameCpp() {
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, sceneIndexBuffer);
 
-    glDrawElements(GL_TRIANGLE_STRIP, this->indexArraySize, GL_UNSIGNED_INT, (const void *)0);
+    glDrawElements(GL_TRIANGLES, this->indexArraySize, GL_UNSIGNED_INT, (const void *)0);
+
+    glBindVertexArray(0);
+    SDL_GL_SwapWindow(pWindow);
+    glCheckError();
+}
+
+void Player::drawFrameCPPWithoutIndex() {
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glViewport(0, 0, pWindowWidth, pWindowHeight);
+    glDisable(GL_DEPTH_TEST);
+
+    computeMVPMatrix();
+    glUseProgram(sceneProgramID);
+
+    glBindTexture(GL_TEXTURE_2D, sceneTextureID);
+    glCheckError();
+
+    glUniformMatrix4fv(sceneMVPMatrixPointer, 1, GL_FALSE, &mvpMatrix[0][0]);
+
+    glBindVertexArray(sceneVAO);
+
+    glBindBuffer(GL_ARRAY_BUFFER, sceneVertBuffer);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (const void *)0);
+
+    glBindBuffer(GL_ARRAY_BUFFER, sceneUVBuffer);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, (const void *)0);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, sceneIndexBuffer);
+
+    glDrawElements(GL_TRIANGLE_FAN, 7, GL_UNSIGNED_INT, (const void *)0);
+    glDrawElements(GL_TRIANGLES, this->indexVector.size() - 14, GL_UNSIGNED_INT, (const void *)this->indexVector[8]);
+    glDrawElements(GL_TRIANGLE_FAN, 7, GL_UNSIGNED_INT, (const void *)(&this->indexVector[this->indexVector.size() - 6]));
 
     glBindVertexArray(0);
     SDL_GL_SwapWindow(pWindow);
@@ -700,7 +1086,7 @@ void Player::drawFrameCpp() {
 /**
  * 绘制投影格式为ERP的视频帧
  */
-void Player::drawFrameERP() {
+void Player::drawFrameERPWithoutIndex() {
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glViewport(0, 0, pWindowWidth, pWindowHeight);
@@ -752,6 +1138,22 @@ bool Player::setupTextureData(unsigned char *textureData) {
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, frameWidth, frameHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
     glCheckError();
     return true;
+}
+
+/**
+* 设置投影和绘图格式
+*/
+void Player::setupMode(ProjectionMode projection, DrawMode draw) {
+    this->projectionMode = projection;
+    this->drawMode = draw;
+    setupCoordinates();
+}
+
+/**
+* 计算MVP矩阵
+*/
+void Player::computeMVPMatrix() {
+    mvpMatrix = projectMatrix * viewMatrix * modelMatrix;
 }
 
 /**
@@ -812,36 +1214,24 @@ void Player::resizeWindow(SDL_Event& event) {
  * 主渲染循环
  */
 void Player::renderLoop() {
-    assert(mode != NOT_SPECIFIED);
+    assert(projectionMode != PM_NOT_SPECIFIED);
+    assert(drawMode != DM_NOT_SPECTIFIED);
     bool bQuit = false;
     SDL_StartTextInput();
     int frameIndex = 0;
-    watch->Start();
+    timeMeasurer->Start();
     while(!bQuit) {
         drawFrame();
         frameIndex++;
         bQuit = handleInput();
     }
-    __int64 time = watch->elapsedMillionSecondsSinceStart();
+    __int64 time = timeMeasurer->elapsedMillionSecondsSinceStart();
     double average = 1.0 * time / frameIndex;
     
-    printf("projection mode is: %s\n", mode == EQUAL_AREA ? "Craster Parabolic Projection" : "Equirectangular Projection");
+    std::cout << "projection mode is: %s\n" << (projectionMode == EQUAL_AREA ? "Craster Parabolic Projection" : "Equirectangular Projection") << std::endl;
     std::cout << "Frame count: " << frameIndex << std::endl << "Total time: " << time << " ms." << std::endl << "Average time: " << average << " ms." << std::endl;
-    printf("------------------------------\n");
+    std::cout << "------------------------------\n";
     SDL_StopTextInput();
 }
 
-/**
- * 设置视频的投影格式
- */
-void Player::setupProjectionMode(ProjectionMode mode) {
-    this->mode = mode;
-    setupCoordinates();
-}
 
-/**
- * 计算MVP矩阵
- */
-void Player::computeMVPMatrix() {
-    mvpMatrix = projectMatrix * viewMatrix * modelMatrix;
-}

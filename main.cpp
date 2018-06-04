@@ -1,6 +1,7 @@
 #include "Player.h"
 #include "yuvConverter.h"
 #include <fstream>
+
 void readDataFromFile(const char *fileName, unsigned char *yuvData, int frameWidth, int frameHeight) {
     if(yuvData == NULL) {
         return;
@@ -19,7 +20,7 @@ void convertYUV2RGB(unsigned char *yuvData, unsigned char *rgbData, int frameWid
     yuv420p_to_rgb24(yuvData, rgbData, frameWidth, frameHeight);
 }
 
-void rgb24ToBMP(unsigned char *rgbBuffer, int width, int height, const char *bmppath) {
+/*void rgb24ToBMP(unsigned char *rgbBuffer, int width, int height, const char *bmppath) {
     typedef struct {
         long imageSize;
         long blank;
@@ -67,9 +68,6 @@ void rgb24ToBMP(unsigned char *rgbBuffer, int width, int height, const char *bmp
     fwrite(&m_BMPHeader, 1, sizeof(m_BMPHeader), fp_bmp);
     fwrite(&m_BMPInfoHeader, 1, sizeof(m_BMPInfoHeader), fp_bmp);
 
-    //BMP save R1|G1|B1,R2|G2|B2 as B1|G1|R1,B2|G2|R2  
-    //It saves pixel data in Little Endian  
-    //So we change 'R' and 'B'  
     for(j = 0; j < height; j++) {
         for(i = 0; i < width; i++) {
             char temp = rgbBuffer[(j*width + i) * 3 + 2];
@@ -81,7 +79,7 @@ void rgb24ToBMP(unsigned char *rgbBuffer, int width, int height, const char *bmp
     fclose(fp_bmp);
     printf("Finish generate %s!\n", bmppath);
     return;
-}
+}*/
 
 void YV12ToBGR24_Native(uint8_t* pYUV, uint8_t* pBGR24, int width, int height) {
     if(width < 1 || height < 1 || pYUV == NULL || pBGR24 == NULL)
@@ -131,12 +129,13 @@ int main(int argv, char** args) {
     int frameWidth = 3840;
     Player *player = new Player(frameWidth, frameHeight, patches);
 
-    uint8_t *yuvData = (uint8_t *)malloc(sizeof(uint8_t)*frameHeight*frameWidth * 3 / 2);
+
+    uint8_t *yuvData = new uint8_t[frameHeight*frameWidth * 3 / 2];
     if(yuvData == NULL) {
         std::cout << __FUNCTION__ << " - Failed to allocate memory fro YUV data." << std::endl;
         return 0;
     }
-    uint8_t *rgbData = (uint8_t *)malloc(sizeof(uint8_t)*frameHeight*frameWidth * 3);
+    uint8_t *rgbData = new uint8_t[frameHeight*frameWidth * 3];
     if(rgbData == NULL) {
         std::cout << __FUNCTION__ << " - Failed to allocate memory fro RGB data." << std::endl;
         return 0;
@@ -144,19 +143,17 @@ int main(int argv, char** args) {
 
     readDataFromFile("cpp.yuv", yuvData, frameWidth, frameHeight);
     convertYUV2RGB(yuvData, rgbData, frameWidth, frameHeight);
-    player->setupProjectionMode(EQUAL_AREA);
+    player->setupMode(EQUAL_AREA, DONT_USE_INDEX);
     player->setupTextureData(rgbData);
     player->renderLoop();
 
     readDataFromFile("ZSP.yuv", yuvData, frameWidth, frameHeight);
     convertYUV2RGB(yuvData, rgbData, frameWidth, frameHeight);
-    player->setupProjectionMode(EQUIRECTANGULAR);
+    player->setupMode(EQUIRECTANGULAR, DONT_USE_INDEX);
     player->setupTextureData(rgbData);
     player->renderLoop();
-
-
-    free(yuvData);
-    free(rgbData);
+    delete[] yuvData;
+    delete[] rgbData;
     delete player;
     return 0;
 }
