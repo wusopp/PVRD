@@ -1,16 +1,4 @@
-﻿  Player.cpp
-e:\tamarous\displaycpp\displaycpp\player.cpp(467): warning C4244: “初始化”: 从“int”转换到“float”，可能丢失数据
-e:\tamarous\displaycpp\displaycpp\player.cpp(468): warning C4244: “初始化”: 从“double”转换到“float”，可能丢失数据
-e:\tamarous\displaycpp\displaycpp\player.cpp(470): warning C4305: “-=”: 从“double”到“float”截断
-e:\tamarous\displaycpp\displaycpp\player.cpp(471): warning C4305: “-=”: 从“double”到“float”截断
-e:\tamarous\displaycpp\displaycpp\player.cpp(473): warning C4244: “=”: 从“double”转换到“float”，可能丢失数据
-e:\tamarous\displaycpp\displaycpp\player.cpp(474): warning C4244: “=”: 从“double”转换到“float”，可能丢失数据
-e:\tamarous\displaycpp\displaycpp\player.cpp(542): warning C4244: “参数”: 从“double”转换到“float”，可能丢失数据
-e:\tamarous\displaycpp\displaycpp\player.cpp(547): warning C4244: “参数”: 从“double”转换到“float”，可能丢失数据
-e:\tamarous\displaycpp\displaycpp\player.cpp(552): warning C4244: “参数”: 从“double”转换到“float”，可能丢失数据
-e:\tamarous\displaycpp\displaycpp\player.cpp(558): warning C4244: “参数”: 从“double”转换到“float”，可能丢失数据
-e:\tamarous\displaycpp\displaycpp\player.cpp(786): warning C4018: “<”: 有符号/无符号不匹配
-e:\tamarous\displaycpp\displaycpp\player.cpp(860): warning C4244: “参数”: 从“double”转换到“float”，可能丢失数据
+﻿  main.cpp
 Player.obj : warning LNK4075: 忽略“/EDITANDCONTINUE”(由于“/OPT:LBR”规范)
   DisplayCPP.vcxproj -> E:\Tamarous\DisplayCPP\Debug\DisplayCPP.exe
   DisplayCPP.vcxproj -> E:\Tamarous\DisplayCPP\Debug\DisplayCPP.pdb (Full PDB)

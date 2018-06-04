@@ -143,7 +143,7 @@ int main(int argv, char** args) {
 
     readDataFromFile("cpp.yuv", yuvData, frameWidth, frameHeight);
     convertYUV2RGB(yuvData, rgbData, frameWidth, frameHeight);
-    player->setupMode(EQUAL_AREA, DONT_USE_INDEX);
+    player->setupMode(EQUAL_AREA, USE_INDEX);
     player->setupTextureData(rgbData);
     player->renderLoop();
 

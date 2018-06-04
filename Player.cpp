@@ -1,8 +1,8 @@
 #include "Player.h"
 #include <math.h>
 #include <iostream>
+#pragma region OpenGL Code
 #define glCheckError() glCheckError_(__LINE__)
-
 #define logLine() printf("Line:%d, %s\n",__LINE__,__FUNCTION__);
 
 void glCheckError_(int line) {
@@ -64,6 +64,9 @@ void addShader(int type, const char * source, int program) {
     glAttachShader(program, shader);
     glDeleteShader(shader);
 }
+#pragma endregion
+
+
 
 Player::Player(int numberOfPatches) :
     pWindow(NULL),
@@ -73,7 +76,7 @@ Player::Player(int numberOfPatches) :
     timeMeasurer(new TimeMeasurer()),
     vertexArray(NULL),
     uvArray(NULL),
-    indexArray(NULL){
+    indexArray(NULL) {
     this->patchNumbers = numberOfPatches;
     init();
 }
@@ -116,7 +119,16 @@ Player::~Player() {
         delete[] uvArray;
         uvArray = NULL;
     }
+    if(timeMeasurer != NULL) {
+        delete timeMeasurer;
+        timeMeasurer = NULL;
+    }
+    if(pWindow != NULL) {
+        SDL_DestroyWindow(pWindow);
+        pWindow = NULL;
+    }
     destroyGL();
+    SDL_Quit();
 }
 
 /**
@@ -229,25 +241,7 @@ void Player::setupProjectionMatrix() {
     projectMatrix = glm::perspective(45.0f, aspect, 0.1f, 40.0f);
 }
 
-/**
- * 根据投影格式来调用不同的渲染方法
- */
-void Player::drawFrame() {
-    if(projectionMode == EQUIRECTANGULAR) {
-        if(drawMode == USE_INDEX) {
-            drawFrameERPWithIndex();
-        } else {
-            drawFrameERPWithoutIndex();
-        }
-        
-    } else if(projectionMode == EQUAL_AREA) {
-        if(drawMode == USE_INDEX) {
-            drawFrameCPPWithIndex();
-        } else {
-            drawFrameCPPWithoutIndex();
-        }
-    }
-}
+
 
 
 bool Player::setupERPCoordinatesWithIndex() {
@@ -257,15 +251,19 @@ bool Player::setupERPCoordinatesWithIndex() {
     int pieces = this->patchNumbers;
     int halfPieces = pieces / 2;
 
-    this->vertexCount = ((halfPieces + 1) * (pieces+1));
-    if(indexArray) {
+    this->vertexCount = ((halfPieces + 1) * (pieces + 1));
+    //this->vertexCount = (halfPieces)*(pieces);
+    if(this->indexArray) {
         delete[] indexArray;
+        indexArray = NULL;
     }
     if(this->vertexArray) {
         delete[] this->vertexArray;
+        vertexArray = NULL;
     }
     if(this->uvArray) {
         delete[] this->uvArray;
+        uvArray = NULL;
     }
 
     this->indexArraySize = (pieces)*(halfPieces) * 6;
@@ -299,6 +297,25 @@ bool Player::setupERPCoordinatesWithIndex() {
             this->uvArray[n++] = vt;
         }
     }
+
+    /*for(int verticalIndex = 0; verticalIndex < halfPieces; verticalIndex++) {
+        latitude = verticalIndex * verticalInterval;
+        for(int horizontalIndex = 0; horizontalIndex < pieces; horizontalIndex++) {
+            longitude = horizontalIndex * horizontalInterval;
+
+            zt = (float)(radius*sin(latitude)*cos(longitude));
+            xt = (float)(radius*sin(latitude)*sin(longitude));
+            yt = (float)(radius*cos(latitude));
+
+            ut = 1.0f * horizontalIndex / pieces;
+            vt = 1.0f * verticalIndex / pieces;
+            this->vertexArray[m++] = xt;
+            this->vertexArray[m++] = yt;
+            this->vertexArray[m++] = zt;
+            this->uvArray[n++] = ut;
+            this->uvArray[n++] = vt;
+        }
+    }*/
 
     m = 0;
     for(int i = 1; i <= halfPieces; i++) {
@@ -336,7 +353,6 @@ bool Player::setupERPCoordinatesWithIndex() {
     glGenBuffers(1, &sceneIndexBuffer);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, sceneIndexBuffer);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, indexBufferSize, this->indexArray, GL_STATIC_DRAW);
-
 
     glBindVertexArray(0);
     glCheckError();
@@ -504,12 +520,11 @@ void Player::computeSTCoordinates(double latitude, double longitude, double &u, 
 /**
  * 设置绘制CPP格式视频的球体模型的坐标，不使用索引
  */
-bool Player::setupCPPCoordinatesWithoutIndex()
-{
+bool Player::setupCPPCoordinatesWithoutIndex() {
     glCheckError();
     this->vertexCount = (this->patchNumbers) * (this->patchNumbers / 2) * 6;
     if(this->vertexArray) {
-        delete[] this->vertexArray;  
+        delete[] this->vertexArray;
     }
     this->vertexArray = new float[this->vertexCount * 3];
     if(this->uvArray) {
@@ -616,7 +631,105 @@ bool Player::setupCPPCoordinatesWithoutIndex()
 }
 
 /**
- * 设置绘制CPP格式视频的球体模型的坐标，使用索引
+* 设置绘制CPP格式视频的球体模型的坐标，使用索引
+*/
+bool Player::setupCPPCoordinatesWithIndex() {
+    glCheckError();
+
+    int radius = 10;
+    int pieces = this->patchNumbers;
+    int halfPieces = pieces / 2;
+
+    this->vertexCount = ((halfPieces + 1) * (pieces + 1));
+    if(indexArray) {
+        delete[] indexArray;
+    }
+    if(this->vertexArray) {
+        delete[] this->vertexArray;
+    }
+    if(this->uvArray) {
+        delete[] this->uvArray;
+    }
+
+    this->indexArraySize = (pieces)*(halfPieces) * 6;
+    this->vertexArray = new float[this->vertexCount * 3];
+    this->uvArray = new float[this->vertexCount * 2];
+    this->indexArray = new int[this->indexArraySize];
+
+
+    double verticalInterval = M_PI / halfPieces;
+    double horizontalInterval = verticalInterval;
+
+    double latitude, longitude;
+    float xt, yt, zt;
+    float ut, vt;
+
+    int m = 0, n = 0;
+    for(int verticalIndex = 0; verticalIndex <= halfPieces; verticalIndex++) {
+        latitude = verticalIndex * verticalInterval;
+        for(int horizontalIndex = 0; horizontalIndex <= pieces; horizontalIndex++) {
+            longitude = horizontalIndex * horizontalInterval;
+
+            zt = (float)(radius*sin(latitude)*cos(longitude));
+            xt = (float)(radius*sin(latitude)*sin(longitude));
+            yt = (float)(radius*cos(latitude));
+
+            computeSTCoordinates(latitude, longitude, ut, vt);
+            this->vertexArray[m++] = xt;
+            this->vertexArray[m++] = yt;
+            this->vertexArray[m++] = zt;
+            this->uvArray[n++] = ut;
+            this->uvArray[n++] = vt;
+        }
+    }
+
+    m = 0;
+    for(int i = 1; i <= halfPieces; i++) {
+        for(int j = 0; j <= pieces - 1; j++) {
+            // 第index个矩形,0-1-2, 2-3-0
+            // 1---2
+            // |  /|
+            // | / |
+            // |/  |
+            // 0---3
+            int index = i * (pieces + 1) + j;
+            indexArray[m++] = (i - 1) * (pieces + 1) + j;
+            indexArray[m++] = i * (pieces + 1) + j;
+            indexArray[m++] = i * (pieces + 1) + j + 1;
+            indexArray[m++] = i * (pieces + 1) + j + 1;
+            indexArray[m++] = (i - 1) * (pieces + 1) + j + 1;
+            indexArray[m++] = (i - 1) * (pieces + 1) + j;
+        }
+    }
+
+
+    glGenVertexArrays(1, &sceneVAO);
+    glBindVertexArray(sceneVAO);
+
+    int vertexBufferSize = this->vertexCount * 3 * sizeof(float);
+    int uvBufferSize = this->vertexCount * 2 * sizeof(float);
+    int indexBufferSize = this->indexArraySize * sizeof(int);
+
+    glGenBuffers(1, &sceneVertBuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, sceneVertBuffer);
+    glBufferData(GL_ARRAY_BUFFER, vertexBufferSize, this->vertexArray, GL_STATIC_DRAW);
+
+    glGenBuffers(1, &sceneUVBuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, sceneUVBuffer);
+    glBufferData(GL_ARRAY_BUFFER, uvBufferSize, this->uvArray, GL_STATIC_DRAW);
+
+    glGenBuffers(1, &sceneIndexBuffer);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, sceneIndexBuffer);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indexBufferSize, this->indexArray, GL_STATIC_DRAW);
+
+    glBindVertexArray(0);
+    glCheckError();
+    return true;
+}
+
+
+/**
+ * 设置绘制CPP格式视频的球体模型的坐标，使用索引，分区绘制
  */
 bool Player::setupCppCoordinates() {
 
@@ -632,7 +745,7 @@ bool Player::setupCppCoordinates() {
     double latitude, longitude;
     double x, y, z;
     double u, v;
-   
+
     int index = 0;
 
     // 设置北极点
@@ -647,8 +760,6 @@ bool Player::setupCppCoordinates() {
     this->vertexVector.push_back(z);
     this->uvVector.push_back(u);
     this->uvVector.push_back(v);
-
-
 
     for(int i = 1; i < halfPieces / 4; i += 2) {
         latitude = i * verticalInterval;
@@ -672,7 +783,7 @@ bool Player::setupCppCoordinates() {
     }
     for(int i = halfPieces / 4; i < halfPieces * 3 / 4; i++) {
         latitude = i * verticalInterval;
-        for(int j = 0; j < pieces; j ++) {
+        for(int j = 0; j < pieces; j++) {
             longitude = j * horizontalInterval;
 
             z = radius * sin(latitude) * cos(longitude);
@@ -709,7 +820,7 @@ bool Player::setupCppCoordinates() {
             index++;
         }
     }
-    
+
 
     // 设置南极点
     latitude = halfPieces * verticalInterval;
@@ -738,13 +849,13 @@ bool Player::setupCppCoordinates() {
 
     for(int i = 0; i <= halfPieces / 8 - 1; i++) {
         for(int j = 1; j <= halfPieces - 1; j++) {
-            index = halfPieces * i + j-1 + lastIndex;
+            index = halfPieces * i + j - 1 + lastIndex;
             this->indexVector.push_back(index + halfPieces);
             this->indexVector.push_back(index);
             this->indexVector.push_back(index + 1);
             this->indexVector.push_back(index + 1);
             this->indexVector.push_back(index + halfPieces + 2);
-            this->indexVector.push_back(index+halfPieces);
+            this->indexVector.push_back(index + halfPieces);
         }
     }
 
@@ -761,9 +872,9 @@ bool Player::setupCppCoordinates() {
             this->indexVector.push_back(index + pieces);
         }
     }
-     
+
     lastIndex = 72;
-    for(int i = halfPieces * 3 / 4; i < halfPieces-1; i++) {
+    for(int i = halfPieces * 3 / 4; i < halfPieces - 1; i++) {
         for(int j = 1; j <= halfPieces - 1; j++) {
             index = (i - 1) * halfPieces + j + lastIndex;
             this->indexVector.push_back(index + halfPieces);
@@ -814,153 +925,6 @@ bool Player::setupCppCoordinates() {
 
 
 /**
- * 设置绘制CPP格式视频的球体模型的坐标，使用索引
- */
-bool Player::setupCPPCoordinatesWithIndex() {
-    glCheckError();
-
-    int radius = 10;
-    int pieces = this->patchNumbers;
-    int halfPieces = pieces / 2;
-
-    this->vertexCount = ((halfPieces+1) * (pieces+1));
-    if(indexArray) {
-        delete[] indexArray;
-    }
-    if(this->vertexArray) {
-        delete[] this->vertexArray;
-    }
-    if(this->uvArray) {
-        delete[] this->uvArray;
-    }
-
-    this->indexArraySize = (pieces)*(halfPieces) * 6;
-    this->vertexArray = new float[this->vertexCount * 3];
-    this->uvArray = new float[this->vertexCount * 2];
-    this->indexArray = new int[this->indexArraySize];
-    
-
-    double verticalInterval = M_PI / halfPieces;
-    double horizontalInterval = verticalInterval;
-
-    double latitude, longitude;
-    float xt, yt, zt;
-    float ut, vt;
-
-    int m = 0, n = 0;
-    for(int verticalIndex = 0; verticalIndex <= halfPieces; verticalIndex++) {
-        latitude = verticalIndex * verticalInterval;
-        for(int horizontalIndex = 0; horizontalIndex <= pieces; horizontalIndex++) {
-            longitude = horizontalIndex * horizontalInterval;
-
-            zt = (float)(radius*sin(latitude)*cos(longitude));
-            xt = (float)(radius*sin(latitude)*sin(longitude));
-            yt = (float)(radius*cos(latitude));
-
-            computeSTCoordinates(latitude, longitude, ut, vt);            
-            this->vertexArray[m++] = xt;
-            this->vertexArray[m++] = yt;
-            this->vertexArray[m++] = zt;
-            this->uvArray[n++] = ut;
-            this->uvArray[n++] = vt;
-        }
-    }
-
-    m = 0;
-    for(int i = 1; i <= halfPieces; i++) {
-        for(int j = 0; j <= pieces-1; j++) {
-            // 第index个矩形,0-1-2, 2-3-0
-            // 1---2
-            // |  /|
-            // | / |
-            // |/  |
-            // 0---3
-            int index = i * (pieces + 1) + j;
-            indexArray[m++] = (i - 1) * (pieces + 1) + j;
-            indexArray[m++] = i * (pieces + 1) + j;
-            indexArray[m++] = i * (pieces + 1) + j + 1;
-            indexArray[m++] = i * (pieces + 1) + j + 1;
-            indexArray[m++] = (i - 1) * (pieces + 1) + j + 1;
-            indexArray[m++] = (i - 1) * (pieces + 1) + j;
-        }
-    }
-
-
-    glGenVertexArrays(1, &sceneVAO);
-    glBindVertexArray(sceneVAO);
-
-    int vertexBufferSize = this->vertexCount * 3 * sizeof(float);
-    int uvBufferSize = this->vertexCount * 2 * sizeof(float);
-    int indexBufferSize = this->indexArraySize * sizeof(int);
-
-    glGenBuffers(1, &sceneVertBuffer);
-    glBindBuffer(GL_ARRAY_BUFFER, sceneVertBuffer);
-    glBufferData(GL_ARRAY_BUFFER, vertexBufferSize, this->vertexArray, GL_STATIC_DRAW);
-
-    glGenBuffers(1, &sceneUVBuffer);
-    glBindBuffer(GL_ARRAY_BUFFER, sceneUVBuffer);
-    glBufferData(GL_ARRAY_BUFFER, uvBufferSize, this->uvArray, GL_STATIC_DRAW);
-
-    glGenBuffers(1, &sceneIndexBuffer);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, sceneIndexBuffer);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indexBufferSize, this->indexArray, GL_STATIC_DRAW);
-
-    glBindVertexArray(0);
-    glCheckError();
-    return true;
-}
-
-
-/**
- * 编译顶点着色器与片元着色器
- */
-bool Player::setupShaders() {
-    glCheckError();
-    sceneProgramID = glCreateProgram();
-    if(!sceneProgramID) {
-        return false;
-    }
-    addShader(GL_VERTEX_SHADER, VERTEX_SHADER, sceneProgramID);
-    glCheckError();
-    addShader(GL_FRAGMENT_SHADER, FRAGMENT_SHADER, sceneProgramID);
-    glCheckError();
-    glLinkProgram(sceneProgramID);
-    GLint linkStatus = GL_FALSE;
-    glGetProgramiv(sceneProgramID, GL_LINK_STATUS, &linkStatus);
-    glCheckError();
-    if(linkStatus != GL_TRUE) {
-        printf("Link sceneProgram failed.\n");
-        return false;
-    }
-    sceneMVPMatrixPointer = glGetUniformLocation(sceneProgramID, "matrix");
-    if(sceneMVPMatrixPointer == -1) {
-        return false;
-    }
-    return true;
-}
-
-/**
- * 设置纹理参数
- */
-bool Player::setupTexture() {
-    glUseProgram(sceneProgramID);
-    glGenTextures(1, &sceneTextureID);
-    glUniform1i(glGetUniformLocation(sceneProgramID, "mytexture"), 0);
-    glBindTexture(GL_TEXTURE_2D, sceneTextureID);
-    glTexParameterf(GL_TEXTURE_2D,
-                    GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameterf(GL_TEXTURE_2D,
-                    GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameterf(GL_TEXTURE_2D,
-                    GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameterf(GL_TEXTURE_2D,
-                    GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glUseProgram(0);
-    glCheckError();
-    return true;
-}
-
-/**
  * 根据视频的投影格式和绘制格式来设置球体模型的顶点坐标与纹理坐标，默认是无索引，ERP
  */
 bool Player::setupCoordinates() {
@@ -998,7 +962,7 @@ void Player::drawFrameERPWithIndex() {
     glBindVertexArray(sceneVAO);
 
     glBindBuffer(GL_ARRAY_BUFFER, sceneVertBuffer);
-    glEnableVertexAttribArray(0); 
+    glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (const void *)0);
 
     glBindBuffer(GL_ARRAY_BUFFER, sceneUVBuffer);
@@ -1012,6 +976,60 @@ void Player::drawFrameERPWithIndex() {
     SDL_GL_SwapWindow(pWindow);
     glCheckError();
 }
+
+/**
+* 根据投影格式来调用不同的渲染方法
+*/
+void Player::drawFrame() {
+    if(projectionMode == EQUIRECTANGULAR) {
+        if(drawMode == USE_INDEX) {
+            drawFrameERPWithIndex();
+        } else {
+            drawFrameERPWithoutIndex();
+        }
+
+    } else if(projectionMode == EQUAL_AREA) {
+        if(drawMode == USE_INDEX) {
+            drawFrameCPPWithIndex();
+        } else {
+            drawFrameCPPWithoutIndex();
+        }
+    }
+}
+
+/**
+* 绘制投影格式为ERP的视频帧
+*/
+void Player::drawFrameERPWithoutIndex() {
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glViewport(0, 0, pWindowWidth, pWindowHeight);
+    glDisable(GL_DEPTH_TEST);
+
+    computeMVPMatrix();
+    glUseProgram(sceneProgramID);
+
+    glBindTexture(GL_TEXTURE_2D, sceneTextureID);
+    glCheckError();
+
+    glUniformMatrix4fv(sceneMVPMatrixPointer, 1, GL_FALSE, &mvpMatrix[0][0]);
+
+    glBindVertexArray(sceneVAO);
+
+    glBindBuffer(GL_ARRAY_BUFFER, sceneVertBuffer);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (const void *)0);
+
+    glBindBuffer(GL_ARRAY_BUFFER, sceneUVBuffer);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, (const void *)0);
+
+    glDrawArrays(GL_TRIANGLES, 0, this->vertexCount);
+    glBindVertexArray(0);
+    SDL_GL_SwapWindow(pWindow);
+    glCheckError();
+}
+
 /**
  * 绘制投影格式为CPP的视频帧
  */
@@ -1072,49 +1090,14 @@ void Player::drawFrameCPPWithoutIndex() {
     glEnableVertexAttribArray(1);
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, (const void *)0);
 
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, sceneIndexBuffer);
-
-    glDrawElements(GL_TRIANGLE_FAN, 7, GL_UNSIGNED_INT, (const void *)0);
-    glDrawElements(GL_TRIANGLES, this->indexVector.size() - 14, GL_UNSIGNED_INT, (const void *)this->indexVector[8]);
-    glDrawElements(GL_TRIANGLE_FAN, 7, GL_UNSIGNED_INT, (const void *)(&this->indexVector[this->indexVector.size() - 6]));
-
-    glBindVertexArray(0);
-    SDL_GL_SwapWindow(pWindow);
-    glCheckError();
-}
-
-/**
- * 绘制投影格式为ERP的视频帧
- */
-void Player::drawFrameERPWithoutIndex() {
-    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    glViewport(0, 0, pWindowWidth, pWindowHeight);
-    glDisable(GL_DEPTH_TEST);
-
-    computeMVPMatrix();
-    glUseProgram(sceneProgramID);
-
-    glBindTexture(GL_TEXTURE_2D, sceneTextureID);
-    glCheckError();
-
-    glUniformMatrix4fv(sceneMVPMatrixPointer, 1, GL_FALSE, &mvpMatrix[0][0]);
-
-    glBindVertexArray(sceneVAO);
-
-    glBindBuffer(GL_ARRAY_BUFFER, sceneVertBuffer);
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (const void *)0);
-
-    glBindBuffer(GL_ARRAY_BUFFER, sceneUVBuffer);
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, (const void *)0);
-
     glDrawArrays(GL_TRIANGLES, 0, this->vertexCount);
+
     glBindVertexArray(0);
     SDL_GL_SwapWindow(pWindow);
     glCheckError();
 }
+
+
 
 
 /**
@@ -1200,7 +1183,7 @@ bool Player::handleInput() {
 }
 
 /**
- * 处理窗口的放缩事件，重新设置视点
+ * 处理窗口的缩放事件，重新设置视点
  */
 void Player::resizeWindow(SDL_Event& event) {
     pWindowWidth = event.window.data1;
@@ -1209,6 +1192,56 @@ void Player::resizeWindow(SDL_Event& event) {
     setupProjectionMatrix();
     computeMVPMatrix();
 }
+
+/**
+* 编译顶点着色器与片元着色器
+*/
+bool Player::setupShaders() {
+    glCheckError();
+    sceneProgramID = glCreateProgram();
+    if(!sceneProgramID) {
+        return false;
+    }
+    addShader(GL_VERTEX_SHADER, VERTEX_SHADER, sceneProgramID);
+    glCheckError();
+    addShader(GL_FRAGMENT_SHADER, FRAGMENT_SHADER, sceneProgramID);
+    glCheckError();
+    glLinkProgram(sceneProgramID);
+    GLint linkStatus = GL_FALSE;
+    glGetProgramiv(sceneProgramID, GL_LINK_STATUS, &linkStatus);
+    glCheckError();
+    if(linkStatus != GL_TRUE) {
+        printf("Link sceneProgram failed.\n");
+        return false;
+    }
+    sceneMVPMatrixPointer = glGetUniformLocation(sceneProgramID, "matrix");
+    if(sceneMVPMatrixPointer == -1) {
+        return false;
+    }
+    return true;
+}
+
+/**
+* 设置纹理参数
+*/
+bool Player::setupTexture() {
+    glUseProgram(sceneProgramID);
+    glGenTextures(1, &sceneTextureID);
+    glUniform1i(glGetUniformLocation(sceneProgramID, "mytexture"), 0);
+    glBindTexture(GL_TEXTURE_2D, sceneTextureID);
+    glTexParameterf(GL_TEXTURE_2D,
+                    GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameterf(GL_TEXTURE_2D,
+                    GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameterf(GL_TEXTURE_2D,
+                    GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameterf(GL_TEXTURE_2D,
+                    GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glUseProgram(0);
+    glCheckError();
+    return true;
+}
+
 
 /**
  * 主渲染循环
@@ -1227,10 +1260,10 @@ void Player::renderLoop() {
     }
     __int64 time = timeMeasurer->elapsedMillionSecondsSinceStart();
     double average = 1.0 * time / frameIndex;
-    
-    std::cout << "projection mode is: %s\n" << (projectionMode == EQUAL_AREA ? "Craster Parabolic Projection" : "Equirectangular Projection") << std::endl;
+
+    std::cout << "projection mode is: " << (projectionMode == EQUAL_AREA ? "Craster Parabolic Projection" : "Equirectangular Projection") << std::endl;
     std::cout << "Frame count: " << frameIndex << std::endl << "Total time: " << time << " ms." << std::endl << "Average time: " << average << " ms." << std::endl;
-    std::cout << "------------------------------\n";
+    std::cout << "------------------------------" << std::endl;
     SDL_StopTextInput();
 }
 
