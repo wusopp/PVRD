@@ -1,7 +1,10 @@
 #include "Player.h"
 #include <math.h>
 #include <iostream>
+
+
 #pragma region OpenGL Code
+
 #define glCheckError() glCheckError_(__LINE__)
 #define logLine() printf("Line:%d, %s\n",__LINE__,__FUNCTION__);
 
@@ -10,7 +13,6 @@ void glCheckError_(int line) {
     char error[100];
     memset(error, 0, sizeof(error));
     while((errorCode = glGetError()) != GL_NO_ERROR) {
-
         switch(errorCode) {
             case GL_INVALID_ENUM:                  sprintf_s(error, "GL_INVALID_ENUM"); break;
             case GL_INVALID_VALUE:                 sprintf_s(error, "GL_INVALID_VALUE"); break;
@@ -244,7 +246,7 @@ void Player::setupProjectionMatrix() {
 
 
 
-bool Player::setupERPCoordinatesWithIndex() {
+bool Player::_setupERPCoordinatesWithIndex() {
     glCheckError();
 
     int radius = 10;
@@ -363,7 +365,7 @@ bool Player::setupERPCoordinatesWithIndex() {
 /**
 * 设置绘制ERP格式视频的球体模型的坐标，不使用索引
 */
-bool Player::setupERPCoordinatesWithoutIndex() {
+bool Player::_setupERPCoordinatesWithoutIndex() {
     glCheckError();
     this->vertexCount = this->patchNumbers * this->patchNumbers * 3;
 
@@ -520,7 +522,7 @@ void Player::computeSTCoordinates(double latitude, double longitude, double &u, 
 /**
  * 设置绘制CPP格式视频的球体模型的坐标，不使用索引
  */
-bool Player::setupCPPCoordinatesWithoutIndex() {
+bool Player::_setupCPPCoordinatesWithoutIndex() {
     glCheckError();
     this->vertexCount = (this->patchNumbers) * (this->patchNumbers / 2) * 6;
     if(this->vertexArray) {
@@ -633,7 +635,7 @@ bool Player::setupCPPCoordinatesWithoutIndex() {
 /**
 * 设置绘制CPP格式视频的球体模型的坐标，使用索引
 */
-bool Player::setupCPPCoordinatesWithIndex() {
+bool Player::_setupCPPCoordinatesWithIndex() {
     glCheckError();
 
     int radius = 10;
@@ -932,21 +934,21 @@ bool Player::setupCoordinates() {
     bool result;
     if(this->projectionMode == EQUAL_AREA) {
         if(this->drawMode == USE_INDEX) {
-            result = setupCPPCoordinatesWithIndex();
+            result = _setupCPPCoordinatesWithIndex();
         } else {
-            result = setupCPPCoordinatesWithoutIndex();
+            result = _setupCPPCoordinatesWithoutIndex();
         }
     } else {
         if(this->drawMode == USE_INDEX) {
-            result = setupERPCoordinatesWithIndex();
+            result = _setupERPCoordinatesWithIndex();
         } else {
-            result = setupERPCoordinatesWithoutIndex();
+            result = _setupERPCoordinatesWithoutIndex();
         }
     }
     return result;
 }
 
-void Player::drawFrameERPWithIndex() {
+void Player::_drawFrameERPWithIndex() {
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glViewport(0, 0, pWindowWidth, pWindowHeight);
@@ -983,16 +985,16 @@ void Player::drawFrameERPWithIndex() {
 void Player::drawFrame() {
     if(projectionMode == EQUIRECTANGULAR) {
         if(drawMode == USE_INDEX) {
-            drawFrameERPWithIndex();
+            _drawFrameERPWithIndex();
         } else {
-            drawFrameERPWithoutIndex();
+            _drawFrameERPWithoutIndex();
         }
 
     } else if(projectionMode == EQUAL_AREA) {
         if(drawMode == USE_INDEX) {
-            drawFrameCPPWithIndex();
+            _drawFrameCPPWithIndex();
         } else {
-            drawFrameCPPWithoutIndex();
+            _drawFrameCPPWithoutIndex();
         }
     }
 }
@@ -1000,7 +1002,7 @@ void Player::drawFrame() {
 /**
 * 绘制投影格式为ERP的视频帧
 */
-void Player::drawFrameERPWithoutIndex() {
+void Player::_drawFrameERPWithoutIndex() {
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glViewport(0, 0, pWindowWidth, pWindowHeight);
@@ -1033,7 +1035,7 @@ void Player::drawFrameERPWithoutIndex() {
 /**
  * 绘制投影格式为CPP的视频帧
  */
-void Player::drawFrameCPPWithIndex() {
+void Player::_drawFrameCPPWithIndex() {
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glViewport(0, 0, pWindowWidth, pWindowHeight);
@@ -1066,7 +1068,7 @@ void Player::drawFrameCPPWithIndex() {
     glCheckError();
 }
 
-void Player::drawFrameCPPWithoutIndex() {
+void Player::_drawFrameCPPWithoutIndex() {
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glViewport(0, 0, pWindowWidth, pWindowHeight);
@@ -1159,6 +1161,7 @@ bool Player::handleInput() {
             case SDL_MOUSEMOTION:
                 if(isMouseSelected) {
                     SDL_GetMouseState(&pCurrentXposition, &pCurrentYposition);
+                    printf("x: %d, y: %d\n", pCurrentXposition, pCurrentYposition);
                     computeViewMatrix();
                     computeMVPMatrix();
                 }
@@ -1261,9 +1264,9 @@ void Player::renderLoop() {
     __int64 time = timeMeasurer->elapsedMillionSecondsSinceStart();
     double average = 1.0 * time / frameIndex;
 
-    std::cout << "projection mode is: " << (projectionMode == EQUAL_AREA ? "Craster Parabolic Projection" : "Equirectangular Projection") << std::endl;
-    std::cout << "Frame count: " << frameIndex << std::endl << "Total time: " << time << " ms." << std::endl << "Average time: " << average << " ms." << std::endl;
-    std::cout << "------------------------------" << std::endl;
+    //std::cout << "projection mode is: " << (projectionMode == EQUAL_AREA ? "Craster Parabolic Projection" : "Equirectangular Projection") << std::endl;
+    //std::cout << "Frame count: " << frameIndex << std::endl << "Total time: " << time << " ms." << std::endl << "Average time: " << average << " ms." << std::endl;
+    //std::cout << "------------------------------" << std::endl;
     SDL_StopTextInput();
 }
 

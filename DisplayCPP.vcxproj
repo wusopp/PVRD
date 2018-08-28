@@ -88,16 +88,16 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>E:\Tamarous\DisplayCPP\glew-1.11.0\include\GL;E:\Tamarous\DisplayCPP\glm;E:\Tamarous\DisplayCPP\sdl2-2.0.3\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <SDLCheck>false</SDLCheck>
+      <AdditionalIncludeDirectories>$(CUDA_PATH)\include;$(SolutionDir)\ThirdParty\glew-1.11.0\include\GL;$(SolutionDir)\ThirdParty\glm;$(SolutionDir)\ThirdParty\d3d\Include;$(SolutionDir)\ThirdParty\cuvid\inc;$(SolutionDir)\ThirdParty\sdl2-2.0.3\include;$(SolutionDir)\ThirdParty\ffmpeg\include;$(SolutionDir)\ThirdParty\Utils\;$(SolutionDir)\ThirdParty\NvCodec\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <AdditionalOptions>/D _CRT_SECURE_NO_WARNINGS %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>E:\Tamarous\DisplayCPP\glew-1.11.0\lib\Release\Win32;E:\Tamarous\DisplayCPP\glew-1.11.0\lib\Release MX\Win32;E:\Tamarous\DisplayCPP\sdl2-2.0.3\bin\win32;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>glew32.lib;SDL2.lib;SDL2main.lib;opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)\ThirdParty\NvCodec\Lib\Win32;$(SolutionDir)\ThirdParty\glew-1.11.0\lib\Release\Win32;$(SolutionDir)\ThirdParty\glew-1.11.0\lib\Release MX\Win32;$(SolutionDir)\ThirdParty\cuvid\lib\Win32;$(SolutionDir)\ThirdParty\d3d\Lib\x86;$(SolutionDir)\ThirdParty\sdl2-2.0.3\bin\win32;$(SolutionDir)\ThirdParty\ffmpeg\lib;$(CUDA_PATH)\lib\Win32;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>nvcuvid.lib;cuda.lib;OpenCL.lib;glew32.lib;SDL2.lib;SDL2main.lib;opengl32.lib;avcodec.lib;avdevice.lib;avfilter.lib;avformat.lib;avutil.lib;postproc.lib;swresample.lib;swscale.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">

@@ -37,67 +37,67 @@ struct Vertex {
 
 class Player {
 public:
-	Player(int numberOfPatches);
+    Player(int numberOfPatches);
     //Player(int width, int height);
     Player(int width, int height, int numberOfPatches = 128);
     ~Player();
-	bool setupTextureData(unsigned char *textureData);
-	void renderLoop();
+    bool setupTextureData(unsigned char *textureData);
+    void renderLoop();
     void setupMode(ProjectionMode projection, DrawMode draw);
 private:
     bool init();
     void destroyGL();
-	bool setupShaders();
-	bool setupTexture();
+    bool setupShaders();
+    bool setupTexture();
     bool setupCoordinates();
-    bool setupERPCoordinatesWithIndex();
-	bool setupERPCoordinatesWithoutIndex();
-    bool setupCPPCoordinatesWithoutIndex();
-    bool setupCPPCoordinatesWithIndex();
+    bool _setupERPCoordinatesWithIndex();
+    bool _setupERPCoordinatesWithoutIndex();
+    bool _setupCPPCoordinatesWithoutIndex();
+    bool _setupCPPCoordinatesWithIndex();
     bool setupCppCoordinates();
-	bool setupMatrixes();
-	void setupProjectionMatrix();
+    bool setupMatrixes();
+    void setupProjectionMatrix();
     void drawFrame();
-	void drawFrameERPWithoutIndex();
-    void drawFrameERPWithIndex();
-    void drawFrameCPPWithIndex();
-    void drawFrameCPPWithoutIndex();
-	bool handleInput();
-	void resizeWindow(SDL_Event& event);
-	void computeMVPMatrix();
-	void computeViewMatrix();
+    void _drawFrameERPWithoutIndex();
+    void _drawFrameERPWithIndex();
+    void _drawFrameCPPWithIndex();
+    void _drawFrameCPPWithoutIndex();
+    bool handleInput();
+    void resizeWindow(SDL_Event& event);
+    void computeMVPMatrix();
+    void computeViewMatrix();
     void computeSTCoordinates(float latitude, float longitude, float &s, float &t);
     void computeSTCoordinates(double latitude, double longitude, double &u, double &v);
 private:
     SDL_Window *pWindow = NULL;
-	SDL_GLContext pContext;
-	glm::mat4 modelMatrix;
-	glm::mat4 viewMatrix;
-	glm::mat4 projectMatrix;
-	glm::mat4 mvpMatrix;
-	GLuint sceneProgramID;
-	GLuint sceneTextureID;
-	GLint sceneMVPMatrixPointer;
+    SDL_GLContext pContext;
+    glm::mat4 modelMatrix;
+    glm::mat4 viewMatrix;
+    glm::mat4 projectMatrix;
+    glm::mat4 mvpMatrix;
+    GLuint sceneProgramID;
+    GLuint sceneTextureID;
+    GLint sceneMVPMatrixPointer;
 
-	GLuint sceneVAO;
-	GLuint sceneVertBuffer;
-	GLuint sceneUVBuffer;
+    GLuint sceneVAO;
+    GLuint sceneVertBuffer;
+    GLuint sceneUVBuffer;
     GLuint sceneIndexBuffer;
 
-	int pPreviousXposition;
-	int pPreviousYposition;
-	int pCurrentXposition;
-	int pCurrentYposition;
-	int pWindowHeight;
-	int pWindowWidth;
-	
-	int patchNumbers;
+    int pPreviousXposition;
+    int pPreviousYposition;
+    int pCurrentXposition;
+    int pCurrentYposition;
+    int pWindowHeight;
+    int pWindowWidth;
 
-	float lon;
-	float lat;
+    int patchNumbers;
 
-	float *vertexArray = NULL;
-	float *uvArray = NULL;
+    float lon;
+    float lat;
+
+    float *vertexArray = NULL;
+    float *uvArray = NULL;
     int *indexArray = NULL;
     int vertexCount;
     int indexArraySize;
@@ -105,7 +105,7 @@ private:
     std::vector<double> vertexVector;
     std::vector<double> uvVector;
     std::vector<int> indexVector;
-    
+
     int frameHeight;
     int frameWidth;
     TimeMeasurer *timeMeasurer = NULL;
