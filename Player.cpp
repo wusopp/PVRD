@@ -203,7 +203,7 @@ void Player::computeViewMatrix() {
     int distanceX = pCurrentXposition - pPreviousXposition;
     int distanceY = pCurrentYposition - pPreviousYposition;
 
-    float DRAG_FACTOR = 0.01f;
+    float DRAG_FACTOR = 0.05f;
 
     lon = distanceX * DRAG_FACTOR + lon;
     lat = -distanceY * DRAG_FACTOR + lat;
@@ -291,7 +291,7 @@ bool Player::_setupERPCoordinatesWithIndex() {
             yt = (float)(radius*cos(latitude));
 
             ut = 1.0f * horizontalIndex / pieces;
-            vt = 1.0f * verticalIndex / pieces;
+            vt = 1.0f * verticalIndex / halfPieces;
             this->vertexArray[m++] = xt;
             this->vertexArray[m++] = yt;
             this->vertexArray[m++] = zt;
@@ -350,11 +350,11 @@ bool Player::_setupERPCoordinatesWithIndex() {
 
     glGenBuffers(1, &sceneUVBuffer);
     glBindBuffer(GL_ARRAY_BUFFER, sceneUVBuffer);
-    glBufferData(GL_ARRAY_BUFFER, uvBufferSize, this->uvArray, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, uvBufferSize,this->uvArray, GL_STATIC_DRAW);
 
     glGenBuffers(1, &sceneIndexBuffer);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, sceneIndexBuffer);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indexBufferSize, this->indexArray, GL_STATIC_DRAW);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indexBufferSize,this->indexArray, GL_STATIC_DRAW);
 
     glBindVertexArray(0);
     glCheckError();
@@ -951,6 +951,26 @@ bool Player::setupCoordinates() {
     return result;
 }
 
+/**
+* 根据投影格式来调用不同的渲染方法
+*/
+void Player::drawFrame() {
+    if (projectionMode == EQUIRECTANGULAR) {
+        if (drawMode == USE_INDEX) {
+            _drawFrameERPWithIndex();
+        } else {
+            _drawFrameERPWithoutIndex();
+        }
+
+    } else if (projectionMode == EQUAL_AREA) {
+        if (drawMode == USE_INDEX) {
+            _drawFrameCPPWithIndex();
+        } else {
+            _drawFrameCPPWithoutIndex();
+        }
+    }
+}
+
 void Player::_drawFrameERPWithIndex() {
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -982,25 +1002,7 @@ void Player::_drawFrameERPWithIndex() {
     glCheckError();
 }
 
-/**
-* 根据投影格式来调用不同的渲染方法
-*/
-void Player::drawFrame() {
-    if(projectionMode == EQUIRECTANGULAR) {
-        if(drawMode == USE_INDEX) {
-            _drawFrameERPWithIndex();
-        } else {
-            _drawFrameERPWithoutIndex();
-        }
 
-    } else if(projectionMode == EQUAL_AREA) {
-        if(drawMode == USE_INDEX) {
-            _drawFrameCPPWithIndex();
-        } else {
-            _drawFrameCPPWithoutIndex();
-        }
-    }
-}
 
 /**
 * 绘制投影格式为ERP的视频帧
@@ -1164,7 +1166,7 @@ bool Player::handleInput() {
             case SDL_MOUSEMOTION:
                 if(isMouseSelected) {
                     SDL_GetMouseState(&pCurrentXposition, &pCurrentYposition);
-                    printf("x: %d, y: %d\n", pCurrentXposition, pCurrentYposition);
+                    std::cout << "pX: " << pPreviousXposition << ", pY: " << pPreviousYposition << ", X: " << pCurrentXposition << ", Y: " << pCurrentYposition << std::endl;
                     computeViewMatrix();
                     computeMVPMatrix();
                 }
