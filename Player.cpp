@@ -643,14 +643,17 @@ bool Player::_setupCPPCoordinatesWithIndex() {
     int halfPieces = pieces / 2;
 
     this->vertexCount = ((halfPieces + 1) * (pieces + 1));
-    if(indexArray) {
+    if(this->indexArray) {
         delete[] indexArray;
+        this->indexArray = NULL;
     }
     if(this->vertexArray) {
         delete[] this->vertexArray;
+        this->vertexArray = NULL;
     }
     if(this->uvArray) {
         delete[] this->uvArray;
+        this->uvArray = NULL;
     }
 
     this->indexArraySize = (pieces)*(halfPieces) * 6;

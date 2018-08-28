@@ -1,4 +1,0 @@
-﻿  main.cpp
-Player.obj : warning LNK4075: 忽略“/EDITANDCONTINUE”(由于“/OPT:LBR”规范)
-  DisplayCPP.vcxproj -> E:\Tamarous\DisplayCPP\Debug\DisplayCPP.exe
-  DisplayCPP.vcxproj -> E:\Tamarous\DisplayCPP\Debug\DisplayCPP.pdb (Full PDB)
