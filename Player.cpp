@@ -1166,7 +1166,6 @@ bool Player::handleInput() {
             case SDL_MOUSEMOTION:
                 if(isMouseSelected) {
                     SDL_GetMouseState(&pCurrentXposition, &pCurrentYposition);
-                    std::cout << "pX: " << pPreviousXposition << ", pY: " << pPreviousYposition << ", X: " << pCurrentXposition << ", Y: " << pCurrentYposition << std::endl;
                     computeViewMatrix();
                     computeMVPMatrix();
                 }
@@ -1269,9 +1268,9 @@ void Player::renderLoop() {
     __int64 time = timeMeasurer->elapsedMillionSecondsSinceStart();
     double average = 1.0 * time / frameIndex;
 
-    //std::cout << "projection mode is: " << (projectionMode == EQUAL_AREA ? "Craster Parabolic Projection" : "Equirectangular Projection") << std::endl;
-    //std::cout << "Frame count: " << frameIndex << std::endl << "Total time: " << time << " ms." << std::endl << "Average time: " << average << " ms." << std::endl;
-    //std::cout << "------------------------------" << std::endl;
+    std::cout << "projection mode is: " << (projectionMode == EQUAL_AREA ? "Craster Parabolic Projection" : "Equirectangular Projection") << std::endl;
+    std::cout << "Frame count: " << frameIndex << std::endl << "Total time: " << time << " ms." << std::endl << "Average time: " << average << " ms." << std::endl;
+    std::cout << "------------------------------" << std::endl;
     SDL_StopTextInput();
 }
 
