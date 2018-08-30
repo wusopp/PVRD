@@ -325,3 +325,5 @@ ASALocalRun/
 *.binlog
 
 *.yuv
+*.csv
+*.cfg
