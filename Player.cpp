@@ -205,18 +205,18 @@ void Player::computeViewMatrix() {
 
     float DRAG_FACTOR = 0.05f;
 
-    lon = distanceX * DRAG_FACTOR + lon;
-    lat = -distanceY * DRAG_FACTOR + lat;
+    this->lon = distanceX * DRAG_FACTOR + this->lon;
+    this->lat = -distanceY * DRAG_FACTOR + this->lat;
 
-    lat = (float)fmax(-89, fmin(89, lat));
+    this->lat = (float)fmax(-89, fmin(89, this->lat));
 
-    float phi = (float)glm::radians(90 - lat);
-    float theta = (float)glm::radians(lon);
+    float phi = (float)glm::radians(90 - this->lat);
+    float theta = (float)glm::radians(this->lon);
 
     float camera[3];
-    camera[0] = (float)(4 * sin(phi) * cos(theta));
-    camera[1] = (float)(4 * cos(phi));
-    camera[2] = (float)(4 * sin(phi) * sin(theta));
+    camera[0] = (float)(10 * sin(phi) * cos(theta));
+    camera[1] = (float)(10 * cos(phi));
+    camera[2] = (float)(10 * sin(phi) * sin(theta));
 
     viewMatrix = glm::lookAt(glm::vec3(0, 0, 0), glm::vec3(camera[0], camera[1], camera[2]), glm::vec3(0, 1, 0));
 }
@@ -242,9 +242,6 @@ void Player::setupProjectionMatrix() {
     float aspect = pWindowWidth * 1.0f / pWindowHeight;
     projectMatrix = glm::perspective(45.0f, aspect, 0.1f, 40.0f);
 }
-
-
-
 
 bool Player::_setupERPCoordinatesWithIndex() {
     glCheckError();

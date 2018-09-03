@@ -162,9 +162,10 @@ void ShowDecoderCapability() {
 }
 
 int main(int argv, char** args) {
+
     int patches;
     if(argv == 1) {
-        patches = 128;
+        patches = 512;
     } else {
         patches = atoi(args[1]);
         if(patches == 0) {
@@ -199,7 +200,7 @@ int main(int argv, char** args) {
         return 0;
     }
 
-    readDataFromFile("cpp.yuv", yuvData, frameWidth, frameHeight);
+    readDataFromFile("ZSP_CPP.yuv", yuvData, frameWidth, frameHeight);
     convertYUV2RGB(yuvData, rgbData, frameWidth, frameHeight);
     player->setupMode(EQUAL_AREA, USE_INDEX);
     player->setupTextureData(rgbData);
