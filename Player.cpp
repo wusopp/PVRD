@@ -969,8 +969,8 @@ void Player::drawFrame() {
 }
 
 void Player::_drawFrameERPWithIndex() {
-    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    /*glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);*/
     glViewport(0, 0, pWindowWidth, pWindowHeight);
     glDisable(GL_DEPTH_TEST);
 
@@ -1005,8 +1005,8 @@ void Player::_drawFrameERPWithIndex() {
 * 绘制投影格式为ERP的视频帧
 */
 void Player::_drawFrameERPWithoutIndex() {
-    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    /*glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);*/
     glViewport(0, 0, pWindowWidth, pWindowHeight);
     glDisable(GL_DEPTH_TEST);
 
@@ -1038,8 +1038,8 @@ void Player::_drawFrameERPWithoutIndex() {
  * 绘制投影格式为CPP的视频帧
  */
 void Player::_drawFrameCPPWithIndex() {
-    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    /*glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);*/
     glViewport(0, 0, pWindowWidth, pWindowHeight);
     glDisable(GL_DEPTH_TEST);
 
@@ -1071,8 +1071,8 @@ void Player::_drawFrameCPPWithIndex() {
 }
 
 void Player::_drawFrameCPPWithoutIndex() {
-    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    /*glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);*/
     glViewport(0, 0, pWindowWidth, pWindowHeight);
     glDisable(GL_DEPTH_TEST);
 
