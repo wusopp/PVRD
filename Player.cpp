@@ -121,6 +121,10 @@ Player::~Player() {
         delete[] uvArray;
         uvArray = NULL;
     }
+    if (indexArray != NULL) {
+        delete[] indexArray;
+        indexArray = NULL;
+    }
     if(timeMeasurer != NULL) {
         delete timeMeasurer;
         timeMeasurer = NULL;
