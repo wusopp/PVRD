@@ -68,8 +68,6 @@ void addShader(int type, const char * source, int program) {
 }
 #pragma endregion
 
-
-
 Player::Player(int numberOfPatches) :
     pWindow(NULL),
     pContext(NULL),
@@ -82,20 +80,6 @@ Player::Player(int numberOfPatches) :
     this->patchNumbers = numberOfPatches;
     init();
 }
-
-//Player::Player(int width, int height) :
-//    pWindow(NULL),
-//    pContext(NULL),
-//    mode(NOT_SPECIFIED),
-//    patchNumbers(128),
-//    timeMeasurer(new TimeMeasurer()),
-//    vertexArray(NULL),
-//    uvArray(NULL),
-//    indexArray(NULL),
-//    frameWidth(width),
-//    frameHeight(height) {
-//    init();
-//}
 
 Player::Player(int width, int height, int numberOfPatches) :
     pWindow(NULL),
@@ -255,7 +239,7 @@ bool Player::_setupERPCoordinatesWithIndex() {
     int halfPieces = pieces / 2;
 
     this->vertexCount = ((halfPieces + 1) * (pieces + 1));
-    //this->vertexCount = (halfPieces)*(pieces);
+ 
     if(this->indexArray) {
         delete[] indexArray;
         indexArray = NULL;
@@ -300,25 +284,6 @@ bool Player::_setupERPCoordinatesWithIndex() {
             this->uvArray[n++] = vt;
         }
     }
-
-    /*for(int verticalIndex = 0; verticalIndex < halfPieces; verticalIndex++) {
-        latitude = verticalIndex * verticalInterval;
-        for(int horizontalIndex = 0; horizontalIndex < pieces; horizontalIndex++) {
-            longitude = horizontalIndex * horizontalInterval;
-
-            zt = (float)(radius*sin(latitude)*cos(longitude));
-            xt = (float)(radius*sin(latitude)*sin(longitude));
-            yt = (float)(radius*cos(latitude));
-
-            ut = 1.0f * horizontalIndex / pieces;
-            vt = 1.0f * verticalIndex / pieces;
-            this->vertexArray[m++] = xt;
-            this->vertexArray[m++] = yt;
-            this->vertexArray[m++] = zt;
-            this->uvArray[n++] = ut;
-            this->uvArray[n++] = vt;
-        }
-    }*/
 
     m = 0;
     for(int i = 1; i <= halfPieces; i++) {
@@ -497,8 +462,6 @@ void Player::computeSTCoordinates(float latitude, float longitude, float &s, flo
 
     s = x / frameWidth;
     t = y / frameHeight;
-
-    //printf("longtitude: %lf\t, latitude: %lf\t, s: %lf\t, t: %lf\t\n", glm::degrees(longitude), glm::degrees(latitude), s, t);
 }
 
 
