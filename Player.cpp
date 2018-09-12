@@ -410,6 +410,7 @@ bool Player::_setupERPCoordinatesWithoutIndex() {
             this->uvArray[n++] = u[2];
             this->uvArray[n++] = v[2];
 
+
             this->vertexArray[m++] = x[3];
             this->vertexArray[m++] = y[3];
             this->vertexArray[m++] = z[3];
@@ -704,191 +705,20 @@ bool Player::setupCppCoordinates() {
 
     // 设置顶点坐标、纹理坐标与索引
     glCheckError();
-    int radius = 10;
-    int pieces = 16;
-    int halfPieces = pieces / 2;
+    
+    /*int frameHeight = 720;
+    int frameWidth = 1440;
 
-    double verticalInterval = M_PI / halfPieces;
-    double horizontalInterval = verticalInterval;
+    int H = frameHeight / 2;
+    float R = 2 * H / sqrt(3 * M_PI);
 
-    double latitude, longitude;
-    double x, y, z;
-    double u, v;
+    for (int i = -H; i <= H; i++) {
+        float latitude = asin(sqrt(3 * M_PI)*R) * 3;
 
-    int index = 0;
+        float leftmost = -sqrt(3 / M_PI) * R * (2 * cos(2 * latitude / 3) - 1) * M_PI;
 
-    // 设置北极点
-    latitude = 0; longitude = 0;
-    z = radius * sin(latitude) * cos(longitude);
-    x = radius * sin(latitude) * sin(longitude);
-    y = radius * cos(latitude);
-
-    computeSTCoordinates(latitude, longitude, u, v);
-    this->vertexVector.push_back(x);
-    this->vertexVector.push_back(y);
-    this->vertexVector.push_back(z);
-    this->uvVector.push_back(u);
-    this->uvVector.push_back(v);
-
-    for(int i = 1; i < halfPieces / 4; i += 2) {
-        latitude = i * verticalInterval;
-
-        for(int j = 0; j < pieces; j += 2) {
-            longitude = j * horizontalInterval;
-
-            z = radius * sin(latitude) * cos(longitude);
-            x = radius * sin(latitude) * sin(longitude);
-            y = radius * cos(latitude);
-
-            computeSTCoordinates(latitude, longitude, u, v);
-            this->vertexVector.push_back(x);
-            this->vertexVector.push_back(y);
-            this->vertexVector.push_back(z);
-            this->uvVector.push_back(u);
-            this->uvVector.push_back(v);
-
-            index++;
-        }
-    }
-    for(int i = halfPieces / 4; i < halfPieces * 3 / 4; i++) {
-        latitude = i * verticalInterval;
-        for(int j = 0; j < pieces; j++) {
-            longitude = j * horizontalInterval;
-
-            z = radius * sin(latitude) * cos(longitude);
-            x = radius * sin(latitude) * sin(longitude);
-            y = radius * cos(latitude);
-
-            computeSTCoordinates(latitude, longitude, u, v);
-            this->vertexVector.push_back(x);
-            this->vertexVector.push_back(y);
-            this->vertexVector.push_back(z);
-            this->uvVector.push_back(u);
-            this->uvVector.push_back(v);
-
-            index++;
-        }
-    }
-
-    for(int i = halfPieces * 3 / 4; i < halfPieces; i++) {
-        latitude = i * verticalInterval;
-        for(int j = 0; j < pieces; j += 2) {
-            longitude = j * horizontalInterval;
-
-            z = radius * sin(latitude) * cos(longitude);
-            x = radius * sin(latitude) * sin(longitude);
-            y = radius * cos(latitude);
-
-            computeSTCoordinates(latitude, longitude, u, v);
-            this->vertexVector.push_back(x);
-            this->vertexVector.push_back(y);
-            this->vertexVector.push_back(z);
-            this->uvVector.push_back(u);
-            this->uvVector.push_back(v);
-
-            index++;
-        }
-    }
-
-
-    // 设置南极点
-    latitude = halfPieces * verticalInterval;
-    longitude = 0;
-    z = radius * sin(latitude) * cos(longitude);
-    x = radius * sin(latitude) * sin(longitude);
-    y = radius * cos(latitude);
-
-    computeSTCoordinates(latitude, longitude, u, v);
-    this->vertexVector.push_back(x);
-    this->vertexVector.push_back(y);
-    this->vertexVector.push_back(z);
-    this->uvVector.push_back(u);
-    this->uvVector.push_back(v);
-
-    index++;
-
-
-    int lastIndex = 0;
-    // 设置北极圈
-    for(int i = 1; i <= halfPieces - 1; i++) {
-        this->indexVector.push_back(0);
-        this->indexVector.push_back(i);
-        this->indexVector.push_back(i + 1);
-    }
-
-    for(int i = 0; i <= halfPieces / 8 - 1; i++) {
-        for(int j = 1; j <= halfPieces - 1; j++) {
-            index = halfPieces * i + j - 1 + lastIndex;
-            this->indexVector.push_back(index + halfPieces);
-            this->indexVector.push_back(index);
-            this->indexVector.push_back(index + 1);
-            this->indexVector.push_back(index + 1);
-            this->indexVector.push_back(index + halfPieces + 2);
-            this->indexVector.push_back(index + halfPieces);
-        }
-    }
-
-    // 疏密相间的一层要单独处理
-    for(int i = halfPieces / 4; i < halfPieces * 3 / 4; i++) {
-        for(int j = 1; j <= pieces - 1; j++) {
-            index = (i - 1)*halfPieces + j;
-
-            this->indexVector.push_back(index + pieces);
-            this->indexVector.push_back(index);
-            this->indexVector.push_back(index + 1);
-            this->indexVector.push_back(index + 1);
-            this->indexVector.push_back(index + pieces + 1);
-            this->indexVector.push_back(index + pieces);
-        }
-    }
-
-    lastIndex = 72;
-    for(int i = halfPieces * 3 / 4; i < halfPieces - 1; i++) {
-        for(int j = 1; j <= halfPieces - 1; j++) {
-            index = (i - 1) * halfPieces + j + lastIndex;
-            this->indexVector.push_back(index + halfPieces);
-            this->indexVector.push_back(index);
-            this->indexVector.push_back(index + 2);
-            this->indexVector.push_back(index + 2);
-            this->indexVector.push_back(index + halfPieces + 1);
-            this->indexVector.push_back(index + halfPieces);
-        }
-    }
-
-    lastIndex = 80;
-    for(int j = 1; j <= halfPieces - 1; j++) {
-        index = j + lastIndex;
-        this->indexVector.push_back(index);
-        this->indexVector.push_back(index + 1);
-        this->indexVector.push_back(89);
-    }
-
-    for(int i = 0; i < indexVector.size(); i += 3) {
-        printf("%d %d %d\n", this->indexVector[i], this->indexVector[i + 1], this->indexVector[i + 2]);
-    }
-
-    glGenVertexArrays(1, &sceneVAO);
-    glBindVertexArray(sceneVAO);
-
-    int vertexBufferSize = this->vertexVector.size() * sizeof(double);
-    int uvBufferSize = this->uvVector.size() * sizeof(double);
-    int indexBufferSize = this->indexVector.size() * sizeof(int);
-
-    glGenBuffers(1, &sceneVertBuffer);
-    glBindBuffer(GL_ARRAY_BUFFER, sceneVertBuffer);
-    glBufferData(GL_ARRAY_BUFFER, vertexBufferSize, &this->vertexVector[0], GL_STATIC_DRAW);
-
-    glGenBuffers(1, &sceneUVBuffer);
-    glBindBuffer(GL_ARRAY_BUFFER, sceneUVBuffer);
-    glBufferData(GL_ARRAY_BUFFER, uvBufferSize, &this->uvVector[0], GL_STATIC_DRAW);
-
-    glGenBuffers(1, &sceneIndexBuffer);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, sceneIndexBuffer);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indexBufferSize, &this->indexVector[0], GL_STATIC_DRAW);
-
-    glBindVertexArray(0);
-    glCheckError();
-
+        float rightmost = sqrt(3 / M_PI) * R * (2 * cos(2 * latitude / 3) - 1) * M_PI;
+    }*/
     return true;
 }
 
