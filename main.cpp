@@ -73,7 +73,7 @@ int main(int argv, char** args) {
 
     int patches;
     if(argv == 1) {
-        patches = 512;
+        patches = 128;
     } else {
         patches = atoi(args[1]);
         if(patches == 0) {
@@ -96,11 +96,11 @@ int main(int argv, char** args) {
     CUdevice cuDevice = 0;
     ck(cuDeviceGet(&cuDevice, iGpu));*/
 
-    Player *player = new Player(frameWidth, frameHeight, patches);
+    Player::Player *player = new Player::Player(frameWidth, frameHeight, patches);
     uint8_t *yuvData = new uint8_t[frameHeight*frameWidth * 3 / 2];
     if(yuvData == NULL) {
         std::cout << __FUNCTION__ << " - Failed to allocate memory for YUV data." << std::endl;
-        return 0;
+        return 0; 
     }
     uint8_t *rgbData = new uint8_t[frameHeight*frameWidth * 3];
     if(rgbData == NULL) {
@@ -108,17 +108,17 @@ int main(int argv, char** args) {
         return 0;
     }
 
-    //readDataFromFile("D:\\WangZewei\\YUV\\zsp_cpp.yuv", yuvData, frameWidth, frameHeight);
-    //convertYUV2RGB(yuvData, rgbData, frameWidth, frameHeight);
-    //player->setupMode(EQUAL_AREA, USE_INDEX);
-    //player->setupTextureData(rgbData);
-    //player->renderLoop();
-
-    readDataFromFile("D:\\WangZewei\\YUV\\kite.yuv", yuvData, frameWidth, frameHeight);
+    readDataFromFile("D:\\WangZewei\\YUV\\kite_cpp.yuv", yuvData, frameWidth, frameHeight);
     convertYUV2RGB(yuvData, rgbData, frameWidth, frameHeight);
-    player->setupMode(EQUIRECTANGULAR, DONT_USE_INDEX);
+    player->setupMode(EQUAL_AREA, USE_INDEX);
     player->setupTextureData(rgbData);
     player->renderLoop();
+
+    //readDataFromFile("D:\\WangZewei\\YUV\\kite.yuv", yuvData, frameWidth, frameHeight);
+    //convertYUV2RGB(yuvData, rgbData, frameWidth, frameHeight);
+    //player->setupMode(EQUIRECTANGULAR, DONT_USE_INDEX);
+    //player->setupTextureData(rgbData);
+    //player->renderLoop();
 
 
     delete[] yuvData;
