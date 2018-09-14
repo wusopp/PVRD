@@ -1184,13 +1184,13 @@ namespace Player {
 
         std::vector<std::vector<VertexStruct>> allVerts;
 
-        for (float j = -H; j <= H; j += 5.0f) {
+        for (float j = H; j >= -H; j -= 10.0f) {
 
             std::vector<VertexStruct> verts;
 
             if (j == H) {
-                float z = 0;
-                float x = 0;
+                float z = 0.0f;
+                float x = 0.0f;
                 float y = radius;
                 float u = 0.5f;
                 float v = 1.0f;
@@ -1216,12 +1216,14 @@ namespace Player {
 
             float rightmost = -leftmost;
 
-            for (float i = leftmost; i <= rightmost; i += 5.0f) {
+            for (float i = leftmost; i <= rightmost; i += 10.0f) {
                 float longitude = i / (sqrt(3 / M_PI) * R * (2 * cos(2 * latitude / 3) - 1));
 
-                float z = radius * sin(latitude) * cos(longitude);
-                float x = radius * sin(latitude) * sin(longitude);
-                float y = radius * cos(latitude);
+                longitude += M_PI;
+
+                float z = radius * cos(latitude) * cos(longitude);
+                float x = radius * cos(latitude) * sin(longitude);
+                float y = radius * sin(latitude);
 
                 float u = 0.0f, v = 0.0f;
                 computeCPPSTCoordinates(i, j, u, v);
@@ -1288,6 +1290,8 @@ namespace Player {
 
         u = x / this->frameWidth;
         v = y / this->frameHeight;
+
+        v = 1.0f - v;
     }
 }
 
