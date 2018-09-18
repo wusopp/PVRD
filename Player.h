@@ -115,8 +115,8 @@ namespace Player {
         int frameHeight;
         int frameWidth;
 
-        float touchPointX;
-        float touchPointY;
+        float touchPointX = 0;
+        float touchPointY = 0;
 
         float *vertexArray = NULL;
         float *uvArray = NULL;

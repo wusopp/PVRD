@@ -189,7 +189,7 @@ namespace Player {
         int distanceX = pCurrentXposition - pPreviousXposition;
         int distanceY = pCurrentYposition - pPreviousYposition;
 
-        float DRAG_FACTOR = 0.2f;
+        float DRAG_FACTOR = 0.01f;
 
         this->touchPointX = distanceX * DRAG_FACTOR + this->touchPointX;
         this->touchPointY = -distanceY * DRAG_FACTOR + this->touchPointY;
@@ -200,9 +200,9 @@ namespace Player {
         float theta = (float)glm::radians(this->touchPointX);
 
         float camera[3];
-        camera[0] = (float)(10 * sin(phi) * cos(theta));
-        camera[1] = (float)(10 * cos(phi));
-        camera[2] = (float)(10 * sin(phi) * sin(theta));
+        camera[0] = (float)(4 * sin(phi) * cos(theta));
+        camera[1] = (float)(4 * cos(phi));
+        camera[2] = (float)(4 * sin(phi) * sin(theta));
 
         viewMatrix = glm::lookAt(glm::vec3(0, 0, 0), glm::vec3(camera[0], camera[1], camera[2]), glm::vec3(0, 1, 0));
     }
