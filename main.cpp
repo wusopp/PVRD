@@ -84,8 +84,8 @@ int main(int argv, char** args) {
 
     //ShowDecoderCapability();
 
-    int frameHeight = 640;
-    int frameWidth = 1280;
+    int frameHeight = 1920;
+    int frameWidth = 3840;
 
     /*int iGpu = 0;
     char *fileName = args[2];
@@ -108,7 +108,7 @@ int main(int argv, char** args) {
         return 0;
     }
 
-    readDataFromFile("D:\\WangZewei\\YUV\\kite_cpp.yuv", yuvData, frameWidth, frameHeight);
+    readDataFromFile("D:\\WangZewei\\YUV\\road_cpp.yuv", yuvData, frameWidth, frameHeight);
     convertYUV2RGB(yuvData, rgbData, frameWidth, frameHeight);
     player->setupMode(EQUAL_AREA, USE_INDEX);
     player->setupTextureData(rgbData);

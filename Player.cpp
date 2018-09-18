@@ -1062,44 +1062,6 @@ namespace Player {
             int pointerForLevel = 0, pointerForNextLevel = 0;
 
             while (pointerForLevel < vertCountForLevel-1 && pointerForNextLevel < vertCountForNextLevel-1) {
-                /*this->vertexVector.push_back(allVerts[level][pointerForLevel].x);
-                this->vertexVector.push_back(allVerts[level][pointerForLevel].y);
-                this->vertexVector.push_back(allVerts[level][pointerForLevel].z);
-                this->uvVector.push_back(allVerts[level][pointerForLevel].u);
-                this->uvVector.push_back(allVerts[level][pointerForLevel].v);
-
-                this->vertexVector.push_back(allVerts[level + 1][pointerForNextLevel].x);
-                this->vertexVector.push_back(allVerts[level + 1][pointerForNextLevel].y);
-                this->vertexVector.push_back(allVerts[level + 1][pointerForNextLevel].z);
-                this->uvVector.push_back(allVerts[level + 1][pointerForNextLevel].u);
-                this->uvVector.push_back(allVerts[level + 1][pointerForNextLevel].v);
-
-
-                this->vertexVector.push_back(allVerts[level + 1][pointerForNextLevel + 1].x);
-                this->vertexVector.push_back(allVerts[level + 1][pointerForNextLevel + 1].y);
-                this->vertexVector.push_back(allVerts[level + 1][pointerForNextLevel + 1].z);
-                this->uvVector.push_back(allVerts[level + 1][pointerForNextLevel + 1].u);
-                this->uvVector.push_back(allVerts[level + 1][pointerForNextLevel + 1].v);
-
-
-                this->vertexVector.push_back(allVerts[level + 1][pointerForNextLevel + 1].x);
-                this->vertexVector.push_back(allVerts[level + 1][pointerForNextLevel + 1].y);
-                this->vertexVector.push_back(allVerts[level + 1][pointerForNextLevel + 1].z);
-                this->uvVector.push_back(allVerts[level + 1][pointerForNextLevel + 1].u);
-                this->uvVector.push_back(allVerts[level + 1][pointerForNextLevel + 1].v);
-
-                this->vertexVector.push_back(allVerts[level][pointerForLevel].x);
-                this->vertexVector.push_back(allVerts[level][pointerForLevel].y);
-                this->vertexVector.push_back(allVerts[level][pointerForLevel].z);
-                this->uvVector.push_back(allVerts[level][pointerForLevel].u);
-                this->uvVector.push_back(allVerts[level][pointerForLevel].v);
-
-                this->vertexVector.push_back(allVerts[level][pointerForLevel+1].x);
-                this->vertexVector.push_back(allVerts[level][pointerForLevel+1].y);
-                this->vertexVector.push_back(allVerts[level][pointerForLevel+1].z);
-                this->uvVector.push_back(allVerts[level][pointerForLevel + 1].u);
-                this->uvVector.push_back(allVerts[level][pointerForLevel + 1].v);*/
-
                 this->vertexVector.push_back(allVerts[level + 1][pointerForNextLevel].x);
                 this->vertexVector.push_back(allVerts[level + 1][pointerForNextLevel].y);
                 this->vertexVector.push_back(allVerts[level + 1][pointerForNextLevel].z);
@@ -1140,6 +1102,52 @@ namespace Player {
                 pointerForLevel++;
                 pointerForNextLevel++;
             }
+
+            if (pointerForLevel == vertCountForLevel - 1) {
+                while (pointerForNextLevel < vertCountForNextLevel - 1) {
+                    this->vertexVector.push_back(allVerts[level + 1][pointerForNextLevel].x);
+                    this->vertexVector.push_back(allVerts[level + 1][pointerForNextLevel].y);
+                    this->vertexVector.push_back(allVerts[level + 1][pointerForNextLevel].z);
+                    this->uvVector.push_back(allVerts[level + 1][pointerForNextLevel].u);
+                    this->uvVector.push_back(allVerts[level + 1][pointerForNextLevel].v);
+
+                    this->vertexVector.push_back(allVerts[level][pointerForLevel].x);
+                    this->vertexVector.push_back(allVerts[level][pointerForLevel].y);
+                    this->vertexVector.push_back(allVerts[level][pointerForLevel].z);
+                    this->uvVector.push_back(allVerts[level][pointerForLevel].u);
+                    this->uvVector.push_back(allVerts[level][pointerForLevel].v);
+
+                    this->vertexVector.push_back(allVerts[level + 1][pointerForNextLevel + 1].x);
+                    this->vertexVector.push_back(allVerts[level + 1][pointerForNextLevel + 1].y);
+                    this->vertexVector.push_back(allVerts[level + 1][pointerForNextLevel + 1].z);
+                    this->uvVector.push_back(allVerts[level + 1][pointerForNextLevel + 1].u);
+                    this->uvVector.push_back(allVerts[level + 1][pointerForNextLevel + 1].v);
+
+                    pointerForNextLevel++;
+                }
+            } else if (pointerForNextLevel == vertCountForNextLevel - 1) {
+                while (pointerForLevel < vertCountForLevel - 1) {
+                    this->vertexVector.push_back(allVerts[level + 1][pointerForNextLevel].x);
+                    this->vertexVector.push_back(allVerts[level + 1][pointerForNextLevel].y);
+                    this->vertexVector.push_back(allVerts[level + 1][pointerForNextLevel].z);
+                    this->uvVector.push_back(allVerts[level + 1][pointerForNextLevel].u);
+                    this->uvVector.push_back(allVerts[level + 1][pointerForNextLevel].v);
+
+                    this->vertexVector.push_back(allVerts[level][pointerForLevel].x);
+                    this->vertexVector.push_back(allVerts[level][pointerForLevel].y);
+                    this->vertexVector.push_back(allVerts[level][pointerForLevel].z);
+                    this->uvVector.push_back(allVerts[level][pointerForLevel].u);
+                    this->uvVector.push_back(allVerts[level][pointerForLevel].v);
+
+                    this->vertexVector.push_back(allVerts[level][pointerForLevel + 1].x);
+                    this->vertexVector.push_back(allVerts[level][pointerForLevel + 1].y);
+                    this->vertexVector.push_back(allVerts[level][pointerForLevel + 1].z);
+                    this->uvVector.push_back(allVerts[level][pointerForLevel + 1].u);
+                    this->uvVector.push_back(allVerts[level][pointerForLevel + 1].v);
+
+                    pointerForLevel++;
+                }
+            }
         }
     }
 
@@ -1177,6 +1185,7 @@ namespace Player {
         int H = this->frameHeight / 2;
 
         float SQRT_3_M_PI = sqrt(3 * M_PI);
+        float SQRT_3_DIVIDE_M_PI = sqrt(3 / M_PI);
 
         float R = 2 * H / SQRT_3_M_PI;
 
@@ -1210,14 +1219,14 @@ namespace Player {
                 continue;
             }
 
-            float latitude = asin(j / (sqrt(3 *M_PI)*R)) * 3;
+            float latitude = asin(j / (SQRT_3_M_PI*R)) * 3;
 
-            float leftmost = sqrt(3 / M_PI) * R * (2 * cos(2 * latitude / 3) - 1) * (-M_PI);
+            float leftmost = SQRT_3_DIVIDE_M_PI * R * (2 * cos(2 * latitude / 3) - 1) * (-M_PI);
 
             float rightmost = -leftmost;
 
-            for (float i = leftmost; i <= rightmost; i += 10.0f) {
-                float longitude = i / (sqrt(3 / M_PI) * R * (2 * cos(2 * latitude / 3) - 1));
+            for (float i = leftmost; i < rightmost; i += 10.0f) {
+                float longitude = i / (SQRT_3_DIVIDE_M_PI * R * (2 * cos(2 * latitude / 3) - 1));
 
                 longitude += M_PI;
 
@@ -1232,6 +1241,18 @@ namespace Player {
 
                 verts.push_back(vertexStruct);
             }
+
+            float rightmost_longitude = rightmost / (SQRT_3_DIVIDE_M_PI * R * (2 * cos(2 * latitude / 3) - 1));
+            rightmost_longitude += M_PI;
+
+            float z = radius * cos(latitude) * cos(rightmost_longitude);
+            float x = radius * cos(latitude) * sin(rightmost_longitude);
+            float y = radius * sin(latitude);
+
+            float u = 0.0f, v = 0.0f;
+            computeCPPSTCoordinates(rightmost, j, u, v);
+            VertexStruct vertexStruct(x, y, z, u, v);
+            verts.push_back(vertexStruct);
 
             allVerts.push_back(verts);
         }
