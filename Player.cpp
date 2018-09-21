@@ -724,21 +724,21 @@ namespace Player {
     * 根据投影格式来调用不同的渲染方法
     */
     void Player::drawFrame() {
-        _drawFrameCppEqualDistance();
-        return;
-        if (projectionMode == EQUIRECTANGULAR) {
+        if (this->projectionMode == EQUIRECTANGULAR) {
             if (drawMode == USE_INDEX) {
                 _drawFrameERPWithIndex();
             } else {
                 _drawFrameERPWithoutIndex();
             }
 
-        } else if (projectionMode == EQUAL_AREA) {
+        } else if (this->projectionMode == EQUAL_AREA) {
             if (drawMode == USE_INDEX) {
                 _drawFrameCPPWithIndex();
             } else {
                 _drawFrameCPPWithoutIndex();
             }
+        } else if (this->projectionMode == EQUAL_DISTANCE) {
+            _drawFrameCppEqualDistance();
         }
     }
 
