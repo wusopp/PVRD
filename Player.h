@@ -17,6 +17,7 @@
 enum ProjectionMode {
     EQUIRECTANGULAR = 0,
     EQUAL_AREA,
+    EQUAL_DISTANCE,
     PM_NOT_SPECIFIED
 };
 
@@ -62,19 +63,23 @@ namespace Player {
         void computeViewMatrix();
 
     private:
-        bool setupCppCoordinates();
+        bool setupCppEqualDistanceCoordinates();        
+        void _drawFrameCppEqualDistance();
+
+        void computeCppEqualDistanceUVCoordinates(float x, float y, float &u, float &v);
+        void organizeVerts(std::vector<std::vector<VertexStruct>> &allVerts);
+
+    private:
+        
 
         void _drawFrameERPWithoutIndex();
         void _drawFrameERPWithIndex();
         void _drawFrameCPPWithIndex();
         void _drawFrameCPPWithoutIndex();
-        void _drawFrameCPP();
-
-        void computeSTCoordinates(float latitude, float longitude, float &s, float &t);
-        void computeSTCoordinates(double latitude, double longitude, double &u, double &v);
-        void computeCPPSTCoordinates(float x, float y, float &u, float &v);
-
-        void organizeVerts(std::vector<std::vector<VertexStruct>> &allVerts);
+        
+        void computeCppEqualAreaUVCoordinates(float latitude, float longitude, float &s, float &t);
+        void computeCppEqualAreaUVCoordinates(double latitude, double longitude, double &u, double &v);
+        
 
     private:
         bool _setupERPCoordinatesWithIndex();

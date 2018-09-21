@@ -232,9 +232,6 @@ namespace Player {
     * 根据视频的投影格式和绘制格式来设置球体模型的顶点坐标与纹理坐标，默认是无索引，ERP
     */
     bool Player::setupCoordinates() {
-        setupCppCoordinates();
-        return true;
-
         bool result;
         if (this->projectionMode == EQUAL_AREA) {
             if (this->drawMode == USE_INDEX) {
@@ -242,12 +239,15 @@ namespace Player {
             } else {
                 result = _setupCPPCoordinatesWithoutIndex();
             }
-        } else {
+        } else if (this->projectionMode == EQUIRECTANGULAR){
             if (this->drawMode == USE_INDEX) {
                 result = _setupERPCoordinatesWithIndex();
             } else {
                 result = _setupERPCoordinatesWithoutIndex();
             }
+        } else if (this->projectionMode == EQUAL_DISTANCE) {
+            setupCppEqualDistanceCoordinates();
+            result = true;
         }
         return result;
     }
@@ -502,23 +502,23 @@ namespace Player {
                 z[0] = (float)(radius*sin(latitude)*cos(longitude));
                 x[0] = (float)(radius*sin(latitude)*sin(longitude));
                 y[0] = (float)(radius*cos(latitude));
-                computeSTCoordinates(latitude, longitude, u[0], v[0]);
+                computeCppEqualAreaUVCoordinates(latitude, longitude, u[0], v[0]);
 
                 z[1] = (float)(radius*sin(latitude + verticalInterval)*cos(longitude));
                 x[1] = (float)(radius*sin(latitude + verticalInterval)*sin(longitude));
                 y[1] = (float)(radius*cos(latitude + verticalInterval));
-                computeSTCoordinates(latitude + verticalInterval, longitude, u[1], v[1]);
+                computeCppEqualAreaUVCoordinates(latitude + verticalInterval, longitude, u[1], v[1]);
 
                 z[2] = (float)(radius*sin(latitude + verticalInterval)*cos(longitude + horizontalInterval));
                 x[2] = (float)(radius *sin(latitude + verticalInterval)*sin(longitude + horizontalInterval));
                 y[2] = (float)(radius*cos(latitude + verticalInterval));
-                computeSTCoordinates(latitude + verticalInterval, longitude + horizontalInterval, u[2], v[2]);
+                computeCppEqualAreaUVCoordinates(latitude + verticalInterval, longitude + horizontalInterval, u[2], v[2]);
 
 
                 z[3] = (float)(radius*sin(latitude)*cos(longitude + horizontalInterval));
                 x[3] = (float)(radius*sin(latitude)*sin(longitude + horizontalInterval));
                 y[3] = (float)(radius*cos(latitude));
-                computeSTCoordinates(latitude, longitude + horizontalInterval, u[3], v[3]);
+                computeCppEqualAreaUVCoordinates(latitude, longitude + horizontalInterval, u[3], v[3]);
 
 
                 this->vertexArray[m++] = x[0];
@@ -625,7 +625,7 @@ namespace Player {
                 xt = (float)(radius*sin(latitude)*sin(longitude));
                 yt = (float)(radius*cos(latitude));
 
-                computeSTCoordinates(latitude, longitude, ut, vt);
+                computeCppEqualAreaUVCoordinates(latitude, longitude, ut, vt);
                 this->vertexArray[m++] = xt;
                 this->vertexArray[m++] = yt;
                 this->vertexArray[m++] = zt;
@@ -681,7 +681,7 @@ namespace Player {
     /**
     * 根据球体上点的经纬度，计算对应的纹理坐标
     */
-    void Player::computeSTCoordinates(float latitude, float longitude, float &s, float &t) {
+    void Player::computeCppEqualAreaUVCoordinates(float latitude, float longitude, float &s, float &t) {
         float x, y;
         float H = frameHeight / 2;
         float R = frameHeight / sqrt(3 * M_PI);
@@ -700,7 +700,7 @@ namespace Player {
     }
 
 
-    void Player::computeSTCoordinates(double latitude, double longitude, double &u, double &v) {
+    void Player::computeCppEqualAreaUVCoordinates(double latitude, double longitude, double &u, double &v) {
         double x, y;
         double H = frameHeight / 2;
         double R = frameHeight / sqrt(3 * M_PI);
@@ -724,7 +724,7 @@ namespace Player {
     * 根据投影格式来调用不同的渲染方法
     */
     void Player::drawFrame() {
-        _drawFrameCPP();
+        _drawFrameCppEqualDistance();
         return;
         if (projectionMode == EQUIRECTANGULAR) {
             if (drawMode == USE_INDEX) {
@@ -1154,7 +1154,7 @@ namespace Player {
     /**
     * 设置绘制CPP格式视频的球体模型的坐标，使用索引，分区绘制
     */
-    bool Player::setupCppCoordinates() {
+    bool Player::setupCppEqualDistanceCoordinates() {
 
         // 设置顶点坐标、纹理坐标与索引
         glCheckError();
@@ -1235,7 +1235,7 @@ namespace Player {
                 float y = radius * sin(latitude);
 
                 float u = 0.0f, v = 0.0f;
-                computeCPPSTCoordinates(i, j, u, v);
+                computeCppEqualDistanceUVCoordinates(i, j, u, v);
 
                 VertexStruct vertexStruct(x, y, z, u, v);
 
@@ -1250,7 +1250,7 @@ namespace Player {
             float y = radius * sin(latitude);
 
             float u = 0.0f, v = 0.0f;
-            computeCPPSTCoordinates(rightmost, j, u, v);
+            computeCppEqualDistanceUVCoordinates(rightmost, j, u, v);
             VertexStruct vertexStruct(x, y, z, u, v);
             verts.push_back(vertexStruct);
 
@@ -1278,7 +1278,7 @@ namespace Player {
         return true;
     }
 
-    void Player::_drawFrameCPP() {
+    void Player::_drawFrameCppEqualDistance() {
         glViewport(0, 0, pWindowWidth, pWindowHeight);
         glDisable(GL_DEPTH_TEST);
 
@@ -1305,7 +1305,7 @@ namespace Player {
         glCheckError();
     }
 
-    void Player::computeCPPSTCoordinates(float x, float y, float &u, float &v) {
+    void Player::computeCppEqualDistanceUVCoordinates(float x, float y, float &u, float &v) {
         x += this->frameWidth / 2;
         y += this->frameHeight / 2;
 

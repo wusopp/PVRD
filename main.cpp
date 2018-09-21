@@ -110,7 +110,7 @@ int main(int argv, char** args) {
 
     readDataFromFile("D:\\WangZewei\\YUV\\road_cpp.yuv", yuvData, frameWidth, frameHeight);
     convertYUV2RGB(yuvData, rgbData, frameWidth, frameHeight);
-    player->setupMode(EQUAL_AREA, USE_INDEX);
+    player->setupMode(EQUAL_DISTANCE, USE_INDEX);
     player->setupTextureData(rgbData);
     player->renderLoop();
 
