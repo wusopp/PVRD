@@ -1,6 +1,7 @@
 #include "Player.h"
-#include <math.h>
+#include <cmath>
 #include <iostream>
+#include <string>
 
 #define glCheckError() glCheckError_(__LINE__)
 #define logLine() printf("Line:%d, %s\n",__LINE__,__FUNCTION__);
@@ -1038,7 +1039,23 @@ namespace Player {
         __int64 time = timeMeasurer->elapsedMillionSecondsSinceStart();
         double average = 1.0 * time / frameIndex;
 
-        std::cout << "projection mode is: " << (projectionMode == EQUAL_AREA ? "Craster Parabolic Projection" : "Equirectangular Projection") << std::endl;
+        std::string projectionMode;
+        switch (this->projectionMode) {
+        case EQUAL_AREA:
+            projectionMode = "Craster Parabolic Projection";
+            break;
+        case EQUAL_DISTANCE:
+            projectionMode = "Equal Distance Projection";
+            break;
+        case EQUIRECTANGULAR:
+            projectionMode = "Equirectangular Projection";
+            break;
+        default:
+            projectionMode = " ";
+            break;
+        }
+
+        std::cout << "projection mode is: " << projectionMode << std::endl;
         std::cout << "Frame count: " << frameIndex << std::endl << "Total time: " << time << " ms." << std::endl << "Average time: " << average << " ms." << std::endl;
         std::cout << "------------------------------" << std::endl;
         SDL_StopTextInput();

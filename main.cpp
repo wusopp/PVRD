@@ -83,9 +83,16 @@ int main(int argv, char** args) {
     }
 
     //ShowDecoderCapability();
-
-    int frameHeight = 1920;
+/*
     int frameWidth = 3840;
+    int frameHeight = 1920;*/
+
+    int frameWidth = 1280;
+    int frameHeight = 640;
+
+    //int frameWidth = 1920;
+    //int frameHeight = 960;
+
 
     /*int iGpu = 0;
     char *fileName = args[2];
@@ -108,18 +115,17 @@ int main(int argv, char** args) {
         return 0;
     }
 
-    readDataFromFile("D:\\WangZewei\\YUV\\road_cpp.yuv", yuvData, frameWidth, frameHeight);
+    readDataFromFile("D:\\WangZewei\\YUV\\kite.yuv", yuvData, frameWidth, frameHeight);
     convertYUV2RGB(yuvData, rgbData, frameWidth, frameHeight);
-    player->setupMode(EQUAL_DISTANCE, USE_INDEX);
+    player->setupMode(EQUIRECTANGULAR, DONT_USE_INDEX);
     player->setupTextureData(rgbData);
     player->renderLoop();
 
-    //readDataFromFile("D:\\WangZewei\\YUV\\kite.yuv", yuvData, frameWidth, frameHeight);
-    //convertYUV2RGB(yuvData, rgbData, frameWidth, frameHeight);
-    //player->setupMode(EQUIRECTANGULAR, DONT_USE_INDEX);
-    //player->setupTextureData(rgbData);
-    //player->renderLoop();
-
+    readDataFromFile("D:\\WangZewei\\YUV\\kite_cpp.yuv", yuvData, frameWidth, frameHeight);
+    convertYUV2RGB(yuvData, rgbData, frameWidth, frameHeight);
+    player->setupMode(EQUAL_DISTANCE, DONT_USE_INDEX);
+    player->setupTextureData(rgbData);
+    player->renderLoop();
 
     delete[] yuvData;
     delete[] rgbData;
