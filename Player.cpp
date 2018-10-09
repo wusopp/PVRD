@@ -22,6 +22,8 @@ void glCheckError_(int line) {
     }
 }
 
+const char* TEXTURE_UNIFORMS[] = { "y_tex", "u_tex", "v_tex" };
+
 static const char VERTEX_SHADER[] =
 "#version 410 core\n"
 "uniform mat4 matrix;\n"
@@ -34,11 +36,19 @@ static const char VERTEX_SHADER[] =
 "}\n";
 
 static const char FRAGMENT_SHADER[] =
-"#version 410 core\n"
-"uniform sampler2D mytexture;\n"
-"in vec2 uvCoordsOut;\n"
+"precision mediump float;\n"
+"varying vec2 uvCoordsOut;\n"
+"uniform sampler2D y_tex;\n"
+"uniform sampler2D u_tex;\n"
+"uniform sampler2D v_tex;\n"
 "void main() {\n"
-"	gl_FragColor = texture(mytexture,uvCoordsOut);\n"
+"       float y = 1.164 * (texture2D(y_tex, uvCoordsOut).r - 0.0625);\n"
+"       float u = texture2D(u_tex, uvCoordsOut).r - 0.5;\n"
+"       float v = texture2D(v_tex, uvCoordsOut).r - 0.5;\n"
+"       gl_FragColor = vec4(y + 1.596 * v, "
+"                      y - 0.391 * u - 0.813 * v, "
+"                      y + 2.018 * u, "
+"                      1.0);\n"
 "}\n";
 
 static const GLfloat quadData[] = {
@@ -248,9 +258,9 @@ namespace Player {
         av_init_packet(&packet);
 
         numBytes = avpicture_get_size(AV_PIX_FMT_YUV420P, pCodecCtx->width, pCodecCtx->height);
-        buffer = (uint8_t *)av_malloc(numBytes * sizeof(uint8_t));
+        decodedBuffer = (uint8_t *)av_malloc(numBytes * sizeof(uint8_t));
 
-        if (buffer == NULL) {
+        if (decodedBuffer == NULL) {
             return false;
         }
 
@@ -828,8 +838,7 @@ namespace Player {
         computeMVPMatrix();
         glUseProgram(sceneProgramID);
 
-        glBindTexture(GL_TEXTURE_2D, sceneTextureID);
-        glCheckError();
+       
 
         glUniformMatrix4fv(sceneMVPMatrixPointer, 1, GL_FALSE, &mvpMatrix[0][0]);
         glBindVertexArray(sceneVAO);
@@ -864,8 +873,7 @@ namespace Player {
         computeMVPMatrix();
         glUseProgram(sceneProgramID);
 
-        glBindTexture(GL_TEXTURE_2D, sceneTextureID);
-        glCheckError();
+        
 
         glUniformMatrix4fv(sceneMVPMatrixPointer, 1, GL_FALSE, &mvpMatrix[0][0]);
 
@@ -897,9 +905,8 @@ namespace Player {
         computeMVPMatrix();
         glUseProgram(sceneProgramID);
 
-        glBindTexture(GL_TEXTURE_2D, sceneTextureID);
-        glCheckError();
 
+       
         glUniformMatrix4fv(sceneMVPMatrixPointer, 1, GL_FALSE, &mvpMatrix[0][0]);
 
         glBindVertexArray(sceneVAO);
@@ -929,9 +936,6 @@ namespace Player {
 
         computeMVPMatrix();
         glUseProgram(sceneProgramID);
-
-        glBindTexture(GL_TEXTURE_2D, sceneTextureID);
-        glCheckError();
 
         glUniformMatrix4fv(sceneMVPMatrixPointer, 1, GL_FALSE, &mvpMatrix[0][0]);
 
@@ -965,12 +969,32 @@ namespace Player {
     * 设置视频帧数据
     */
     bool Player::setupTextureData(unsigned char *textureData) {
+        static bool firstTime = true;
         assert(frameHeight > 0 && frameWidth > 0);
         glUseProgram(sceneProgramID);
         glCheckError();
-        glBindTexture(GL_TEXTURE_2D, sceneTextureID);
-        glCheckError();
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, frameWidth, frameHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
+        
+        unsigned char *yuvPlanes[3];
+        yuvPlanes[0] = textureData;
+        yuvPlanes[1] = textureData + this->frameWidth * this->frameHeight;
+        yuvPlanes[2] = textureData + this->frameWidth * this->frameHeight / 4 * 5;
+
+        for (int i = 0; i < 3; i++) {
+            int w = (i == 0 ? this->frameWidth : this->frameWidth / 2);
+            int h = (i == 0 ? this->frameHeight : this->frameHeight / 2);
+
+            glActiveTexture(GL_TEXTURE0 + i);
+            glBindTexture(GL_TEXTURE_2D, yuvTextures[i]);
+            if (firstTime) {
+                glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, w, h, 0, GL_RED, GL_UNSIGNED_BYTE, static_cast<const GLvoid*>(yuvPlanes[i]));
+                //firstTime = false;
+                glCheckError();
+            } else {
+                glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, GL_RED, GL_UNSIGNED_BYTE, static_cast<const GLvoid*>(yuvPlanes[i]));
+                glCheckError();
+            }
+        }
+
         glCheckError();
         return true;
     }
@@ -1052,7 +1076,7 @@ namespace Player {
     }
 
     void Player::destroyCodec() {
-        av_free(buffer);
+        av_free(decodedBuffer);
         
         if (&pFrame != NULL) {
             av_frame_free(&pFrame);
@@ -1107,17 +1131,21 @@ namespace Player {
     */
     bool Player::setupTexture() {
         glUseProgram(sceneProgramID);
-        glGenTextures(1, &sceneTextureID);
-        glUniform1i(glGetUniformLocation(sceneProgramID, "mytexture"), 0);
-        glBindTexture(GL_TEXTURE_2D, sceneTextureID);
-        glTexParameterf(GL_TEXTURE_2D,
-            GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameterf(GL_TEXTURE_2D,
-            GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexParameterf(GL_TEXTURE_2D,
-            GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameterf(GL_TEXTURE_2D,
-            GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glGenTextures(3, yuvTextures);
+       
+        for (int i = 0; i < 3; i++) {
+            glUniform1i(glGetUniformLocation(sceneProgramID, TEXTURE_UNIFORMS[i]), i);
+            glActiveTexture(GL_TEXTURE0 + i);
+            glBindTexture(GL_TEXTURE_2D, yuvTextures[i]);
+            glTexParameterf(GL_TEXTURE_2D,
+                GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameterf(GL_TEXTURE_2D,
+                GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            glTexParameterf(GL_TEXTURE_2D,
+                GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            glTexParameterf(GL_TEXTURE_2D,
+                GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        } 
         glUseProgram(0);
         glCheckError();
         return true;
@@ -1133,17 +1161,21 @@ namespace Player {
         if (packet.stream_index == videoStream) {
             avcodec_decode_video2(pCodecCtx, pFrame, &frameFinished, &packet);
             if (frameFinished) {
-                avpicture_layout((AVPicture *)pFrame, AV_PIX_FMT_YUV420P, pCodecCtx->width, pCodecCtx->height, buffer, numBytes);
-                FILE *p = fopen("tmp.yuv", "wb+");
-                fwrite(buffer, 1, pCodecCtx->width*pCodecCtx->height*3/2, p);
+                avpicture_layout((AVPicture *)pFrame, AV_PIX_FMT_YUV420P, pCodecCtx->width, pCodecCtx->height, decodedBuffer, numBytes);
+
+                FILE *p = fopen("tmp.yuv", "ab+");
+                fwrite(decodedBuffer, sizeof(unsigned char), pCodecCtx->width*pCodecCtx->height * 3 / 2, p);
                 fflush(p);
                 fclose(p);
+                av_free_packet(&packet);
                 return true;
+            } else {
+                return false;
             }
+        } else {
+            std::cout << "packet.stream_index != videoStream, will return false" << std::endl;
+            return false;
         }
-
-        av_free_packet(&packet);
-        return false;
     }
 
     /**
@@ -1158,7 +1190,8 @@ namespace Player {
         timeMeasurer->Start();
         while (!bQuit && !allFrameRead) {
             if (decodeOneFrame()) {
-                //drawFrame();
+                this->setupTextureData(decodedBuffer);
+                this->drawFrame();
                 frameIndex++;
                 bQuit = handleInput();
             }

@@ -84,15 +84,15 @@ int main(int argv, char** args) {
     }
 
     //ShowDecoderCapability();
-/*
+
     int frameWidth = 3840;
-    int frameHeight = 1920;*/
+    int frameHeight = 1920;
 
     //int frameWidth = 1280;
     //int frameHeight = 640;
 
-    int frameWidth = 1920;
-    int frameHeight = 960;
+    //int frameWidth = 1920;
+    //int frameHeight = 960;
 
 
     /*int iGpu = 0;

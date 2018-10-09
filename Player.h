@@ -120,6 +120,7 @@ namespace Player {
         glm::mat4 mvpMatrix;
         GLuint sceneProgramID;
         GLuint sceneTextureID;
+        GLuint yuvTextures[3];
         GLint sceneMVPMatrixPointer;
 
         GLuint sceneVAO;
@@ -163,7 +164,7 @@ namespace Player {
         int               frameFinished;
         bool              allFrameRead = false;
         int               numBytes;
-        uint8_t           *buffer = NULL;
+        uint8_t           *decodedBuffer = NULL;
         struct SwsContext *sws_ctx = NULL;
 
        
