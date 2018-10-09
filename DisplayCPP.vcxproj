@@ -90,7 +90,7 @@
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>false</SDLCheck>
       <AdditionalIncludeDirectories>$(CUDA_PATH)\include;$(SolutionDir)\DisplayCPP\ThirdParty\glew-1.11.0\include\GL;$(SolutionDir)\DisplayCPP\ThirdParty\glm;$(SolutionDir)\DisplayCPP\ThirdParty\d3d\Include;$(SolutionDir)\DisplayCPP\ThirdParty\cuvid\inc;$(SolutionDir)\DisplayCPP\ThirdParty\sdl2-2.0.3\include;$(SolutionDir)\DisplayCPP\ThirdParty\ffmpeg\include;$(SolutionDir)\DisplayCPP\ThirdParty\Utils\;$(SolutionDir)\DisplayCPP\ThirdParty\NvCodec\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <AdditionalOptions>/D _CRT_SECURE_NO_WARNINGS %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>

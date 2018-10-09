@@ -8,10 +8,26 @@
 #include <glm.hpp>
 #include <gtc/type_ptr.hpp>
 #include <vector>
-
+#include <string>
 #include "gtc/matrix_transform.hpp"
 #include "gtc/constants.hpp"
 #include "TimeMeasurer.h"
+
+
+
+extern "C"
+{
+#include <libavcodec\avcodec.h>
+#include <libavformat\avformat.h>
+#include <libswscale\swscale.h>
+#pragma comment (lib, "avcodec.lib")
+#pragma comment (lib, "avdevice.lib")
+#pragma comment (lib, "avfilter.lib")
+#pragma comment (lib, "avformat.lib")
+#pragma comment (lib, "avutil.lib")
+#pragma comment (lib, "swresample.lib")
+#pragma comment (lib, "swscale.lib")
+};
 
 
 enum ProjectionMode {
@@ -44,6 +60,8 @@ namespace Player {
         //Player(int width, int height);
         Player(int width, int height, int numberOfPatches = 128);
         ~Player();
+        bool openVideoFile(const std::string &filePath);
+
         bool setupTextureData(unsigned char *textureData);
         void renderLoop();
         void setupMode(ProjectionMode projection, DrawMode draw);
@@ -51,6 +69,8 @@ namespace Player {
     private:
         bool init();
         void destroyGL();
+        void destroyCodec();
+        bool setupCodec();
         bool setupShaders();
         bool setupTexture();
         bool setupCoordinates();
@@ -61,6 +81,7 @@ namespace Player {
         void resizeWindow(SDL_Event& event);
         void computeMVPMatrix();
         void computeViewMatrix();
+        bool decodeOneFrame();
 
     private:
         bool setupCppEqualDistanceCoordinates();        
@@ -70,7 +91,6 @@ namespace Player {
         void organizeVerts(std::vector<std::vector<VertexStruct>> &allVerts);
 
     private:
-        
 
         void _drawFrameERPWithoutIndex();
         void _drawFrameERPWithIndex();
@@ -131,5 +151,21 @@ namespace Player {
         std::vector<float> uvVector;
         std::vector<int> indexVector;
 
+    private:
+        AVFormatContext   *pFormatCtx = NULL;
+        int               videoStream;
+        int               index;
+        AVCodecContext    *pCodecCtxOrig = NULL;
+        AVCodecContext    *pCodecCtx = NULL;
+        AVCodec           *pCodec = NULL;
+        AVFrame           *pFrame = NULL;
+        AVPacket          packet;
+        int               frameFinished;
+        bool              allFrameRead = false;
+        int               numBytes;
+        uint8_t           *buffer = NULL;
+        struct SwsContext *sws_ctx = NULL;
+
+       
     };
 }

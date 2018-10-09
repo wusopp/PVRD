@@ -117,6 +117,7 @@ namespace Player {
             pWindow = NULL;
         }
         destroyGL();
+        destroyCodec();
         SDL_Quit();
     }
 
@@ -180,6 +181,79 @@ namespace Player {
             std::cout << __FUNCTION__ << "- SetupTexture failed." << std::endl;
             return false;
         }
+
+        if (!setupCodec()) {
+            std::cout << __FUNCTION__ << "- setupCodec failed." << std::endl;
+            return false;
+        }
+        return true;
+    }
+
+
+    bool Player::openVideoFile(const std::string &filePath) {
+
+        if (filePath.length() == 0) {
+            return false;
+        }
+
+        if (avformat_open_input(&pFormatCtx, filePath.c_str(), NULL, NULL) != 0) {
+            return false;
+        }
+
+        if (avformat_find_stream_info(pFormatCtx, NULL) < 0) {
+            return false;
+        }
+
+        av_dump_format(pFormatCtx, 0, filePath.c_str(), 0);
+
+        videoStream = -1;
+
+        for (int i = 0; i < pFormatCtx->nb_streams; i++) {
+            if (pFormatCtx->streams[i]->codec->codec_type == AVMEDIA_TYPE_VIDEO) {
+                videoStream = i;
+                break;
+            }
+        }
+        if (videoStream == -1) {
+            return false;
+        }
+
+        pCodecCtxOrig = pFormatCtx->streams[videoStream]->codec;
+
+        pCodec = avcodec_find_decoder(pCodecCtxOrig->codec_id);
+
+        if (pCodec == NULL) {
+            fprintf(stderr, "Unsupported codec!\n");
+            return false; // Codec not found
+        }
+
+        pCodecCtx = avcodec_alloc_context3(pCodec);
+        if (avcodec_copy_context(pCodecCtx, pCodecCtxOrig) != 0) {
+            fprintf(stderr, "Couldn't copy codec context");
+            return false; // Error copying codec context
+        }
+
+        // Open codec
+        if (avcodec_open2(pCodecCtx, pCodec, NULL) < 0) {
+            return false; // Could not open codec
+        }
+
+
+        // Allocate video frame
+        pFrame = av_frame_alloc();
+        if (pFrame == NULL) {
+            return false;
+        }
+
+        av_init_packet(&packet);
+
+        numBytes = avpicture_get_size(AV_PIX_FMT_YUV420P, pCodecCtx->width, pCodecCtx->height);
+        buffer = (uint8_t *)av_malloc(numBytes * sizeof(uint8_t));
+
+        if (buffer == NULL) {
+            return false;
+        }
+
         return true;
     }
 
@@ -971,6 +1045,35 @@ namespace Player {
         computeMVPMatrix();
     }
 
+
+    bool Player::setupCodec() {
+        av_register_all();
+        return true;
+    }
+
+    void Player::destroyCodec() {
+        av_free(buffer);
+        
+        if (&pFrame != NULL) {
+            av_frame_free(&pFrame);
+        }
+
+        if (pCodecCtx != NULL) {
+            avcodec_close(pCodecCtx);
+            pCodecCtx = NULL;
+        }
+
+        if (pCodecCtxOrig != NULL) {
+            avcodec_close(pCodecCtxOrig);
+            pCodecCtxOrig = NULL;
+        }
+        
+        if (&pFormatCtx != NULL) {
+            avformat_close_input(&pFormatCtx);
+        }
+        
+    }
+
     /**
     * 编译顶点着色器与片元着色器
     */
@@ -1020,6 +1123,28 @@ namespace Player {
         return true;
     }
 
+    bool Player::decodeOneFrame() {
+        int readSuccess = av_read_frame(pFormatCtx, &packet);
+        if (readSuccess < 0) {
+            allFrameRead = true;
+            return false;
+        }
+
+        if (packet.stream_index == videoStream) {
+            avcodec_decode_video2(pCodecCtx, pFrame, &frameFinished, &packet);
+            if (frameFinished) {
+                avpicture_layout((AVPicture *)pFrame, AV_PIX_FMT_YUV420P, pCodecCtx->width, pCodecCtx->height, buffer, numBytes);
+                FILE *p = fopen("tmp.yuv", "wb+");
+                fwrite(buffer, 1, pCodecCtx->width*pCodecCtx->height*3/2, p);
+                fflush(p);
+                fclose(p);
+                return true;
+            }
+        }
+
+        av_free_packet(&packet);
+        return false;
+    }
 
     /**
     * 主渲染循环
@@ -1031,10 +1156,12 @@ namespace Player {
         SDL_StartTextInput();
         int frameIndex = 0;
         timeMeasurer->Start();
-        while (!bQuit) {
-            drawFrame();
-            frameIndex++;
-            bQuit = handleInput();
+        while (!bQuit && !allFrameRead) {
+            if (decodeOneFrame()) {
+                //drawFrame();
+                frameIndex++;
+                bQuit = handleInput();
+            }
         }
         __int64 time = timeMeasurer->elapsedMillionSecondsSinceStart();
         double average = 1.0 * time / frameIndex;

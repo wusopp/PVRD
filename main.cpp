@@ -6,6 +6,7 @@
 #include "FFmpegDemuxer.h"
 #include "../Utils/NvCodecUtils.h"
 
+
 simplelogger::Logger *logger = simplelogger::LoggerFactory::CreateConsoleLogger();
 
 void readDataFromFile(const char *fileName, unsigned char *yuvData, int frameWidth, int frameHeight) {
@@ -87,11 +88,11 @@ int main(int argv, char** args) {
     int frameWidth = 3840;
     int frameHeight = 1920;*/
 
-    int frameWidth = 1280;
-    int frameHeight = 640;
+    //int frameWidth = 1280;
+    //int frameHeight = 640;
 
-    //int frameWidth = 1920;
-    //int frameHeight = 960;
+    int frameWidth = 1920;
+    int frameHeight = 960;
 
 
     /*int iGpu = 0;
@@ -104,7 +105,14 @@ int main(int argv, char** args) {
     ck(cuDeviceGet(&cuDevice, iGpu));*/
 
     Player::Player *player = new Player::Player(frameWidth, frameHeight, patches);
-    uint8_t *yuvData = new uint8_t[frameHeight*frameWidth * 3 / 2];
+
+    std::string filePath = "D:\\WangZewei\\360Video\\shark.mp4";
+
+    player->openVideoFile(filePath);
+    player->setupMode(EQUIRECTANGULAR, USE_INDEX);
+    player->renderLoop();
+
+    /*uint8_t *yuvData = new uint8_t[frameHeight*frameWidth * 3 / 2];
     if(yuvData == NULL) {
         std::cout << __FUNCTION__ << " - Failed to allocate memory for YUV data." << std::endl;
         return 0; 
@@ -128,7 +136,7 @@ int main(int argv, char** args) {
     player->renderLoop();
 
     delete[] yuvData;
-    delete[] rgbData;
+    delete[] rgbData;*/
     delete player;
     return 0;
 }
