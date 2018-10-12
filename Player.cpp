@@ -126,6 +126,15 @@ namespace Player {
             SDL_DestroyWindow(pWindow);
             pWindow = NULL;
         }
+        if (rawBuffer != NULL) {
+            delete[] rawBuffer;
+            rawBuffer = NULL;
+        }
+
+        if (videoFileInputStream.is_open()) {
+            videoFileInputStream.close();
+        }
+
         destroyGL();
         destroyCodec();
         SDL_Quit();
@@ -200,71 +209,89 @@ namespace Player {
     }
 
 
-    bool Player::openVideoFile(const std::string &filePath) {
+    bool Player::openVideoFile(const std::string &filePath, VideoFileType fileType) {
 
-        if (filePath.length() == 0) {
-            return false;
-        }
+        this->videoFileType = fileType;
 
-        if (avformat_open_input(&pFormatCtx, filePath.c_str(), NULL, NULL) != 0) {
-            return false;
-        }
-
-        if (avformat_find_stream_info(pFormatCtx, NULL) < 0) {
-            return false;
-        }
-
-        av_dump_format(pFormatCtx, 0, filePath.c_str(), 0);
-
-        videoStream = -1;
-
-        for (int i = 0; i < pFormatCtx->nb_streams; i++) {
-            if (pFormatCtx->streams[i]->codec->codec_type == AVMEDIA_TYPE_VIDEO) {
-                videoStream = i;
-                break;
+        if (fileType == VFT_Encoded) {
+            if (filePath.length() == 0) {
+                return false;
             }
-        }
-        if (videoStream == -1) {
+
+            if (avformat_open_input(&pFormatCtx, filePath.c_str(), NULL, NULL) != 0) {
+                return false;
+            }
+
+            if (avformat_find_stream_info(pFormatCtx, NULL) < 0) {
+                return false;
+            }
+
+            av_dump_format(pFormatCtx, 0, filePath.c_str(), 0);
+
+            videoStream = -1;
+
+            for (int i = 0; i < pFormatCtx->nb_streams; i++) {
+                if (pFormatCtx->streams[i]->codec->codec_type == AVMEDIA_TYPE_VIDEO) {
+                    videoStream = i;
+                    break;
+                }
+            }
+            if (videoStream == -1) {
+                return false;
+            }
+
+            pCodecCtxOrig = pFormatCtx->streams[videoStream]->codec;
+
+            pCodec = avcodec_find_decoder(pCodecCtxOrig->codec_id);
+
+            if (pCodec == NULL) {
+                fprintf(stderr, "Unsupported codec!\n");
+                return false; // Codec not found
+            }
+
+            pCodecCtx = avcodec_alloc_context3(pCodec);
+            if (avcodec_copy_context(pCodecCtx, pCodecCtxOrig) != 0) {
+                fprintf(stderr, "Couldn't copy codec context");
+                return false; // Error copying codec context
+            }
+
+            // Open codec
+            if (avcodec_open2(pCodecCtx, pCodec, NULL) < 0) {
+                return false; // Could not open codec
+            }
+
+
+            // Allocate video frame
+            pFrame = av_frame_alloc();
+            if (pFrame == NULL) {
+                return false;
+            }
+
+            av_init_packet(&packet);
+
+            numBytes = avpicture_get_size(AV_PIX_FMT_YUV420P, pCodecCtx->width, pCodecCtx->height);
+            decodedBuffer = (uint8_t *)av_malloc(numBytes * sizeof(uint8_t));
+
+            if (decodedBuffer == NULL) {
+                return false;
+            }
+
+            return true;
+        } else if (fileType == VFT_YUV) {
+            this->videoFileInputStream.open(filePath, std::ios::binary | std::ios::in);
+
+            assert(this->frameWidth != 0 && this->frameHeight != 0);
+            this->rawBuffer = new uint8_t[this->frameWidth*this->frameHeight*3/2];
+            if (this->rawBuffer == NULL) {
+                return false;
+            } else {
+                return true;
+            }
+        } else {
             return false;
         }
 
-        pCodecCtxOrig = pFormatCtx->streams[videoStream]->codec;
-
-        pCodec = avcodec_find_decoder(pCodecCtxOrig->codec_id);
-
-        if (pCodec == NULL) {
-            fprintf(stderr, "Unsupported codec!\n");
-            return false; // Codec not found
-        }
-
-        pCodecCtx = avcodec_alloc_context3(pCodec);
-        if (avcodec_copy_context(pCodecCtx, pCodecCtxOrig) != 0) {
-            fprintf(stderr, "Couldn't copy codec context");
-            return false; // Error copying codec context
-        }
-
-        // Open codec
-        if (avcodec_open2(pCodecCtx, pCodec, NULL) < 0) {
-            return false; // Could not open codec
-        }
-
-
-        // Allocate video frame
-        pFrame = av_frame_alloc();
-        if (pFrame == NULL) {
-            return false;
-        }
-
-        av_init_packet(&packet);
-
-        numBytes = avpicture_get_size(AV_PIX_FMT_YUV420P, pCodecCtx->width, pCodecCtx->height);
-        decodedBuffer = (uint8_t *)av_malloc(numBytes * sizeof(uint8_t));
-
-        if (decodedBuffer == NULL) {
-            return false;
-        }
-
-        return true;
+        
     }
 
     /**
@@ -318,19 +345,19 @@ namespace Player {
     */
     bool Player::setupCoordinates() {
         bool result;
-        if (this->projectionMode == EQUAL_AREA) {
-            if (this->drawMode == USE_INDEX) {
+        if (this->projectionMode == PM_EQUALAREA) {
+            if (this->drawMode == DM_USE_INDEX) {
                 result = _setupCPPCoordinatesWithIndex();
             } else {
                 result = _setupCPPCoordinatesWithoutIndex();
             }
-        } else if (this->projectionMode == EQUIRECTANGULAR){
-            if (this->drawMode == USE_INDEX) {
+        } else if (this->projectionMode == PM_EQUIRECTANGULAR){
+            if (this->drawMode == DM_USE_INDEX) {
                 result = _setupERPCoordinatesWithIndex();
             } else {
                 result = _setupERPCoordinatesWithoutIndex();
             }
-        } else if (this->projectionMode == EQUAL_DISTANCE) {
+        } else if (this->projectionMode == PM_EQUAL_DISTANCE) {
             setupCppEqualDistanceCoordinates();
             result = true;
         }
@@ -809,20 +836,28 @@ namespace Player {
     * 根据投影格式来调用不同的渲染方法
     */
     void Player::drawFrame() {
-        if (this->projectionMode == EQUIRECTANGULAR) {
-            if (drawMode == USE_INDEX) {
+        if (this->videoFileType == VFT_YUV) {
+            this->setupTextureData(rawBuffer);
+        } else if (this->videoFileType == VFT_Encoded) {
+            this->setupTextureData(decodedBuffer);
+        } else {
+            return;
+        }
+
+        if (this->projectionMode == PM_EQUIRECTANGULAR) {
+            if (drawMode == DM_USE_INDEX) {
                 _drawFrameERPWithIndex();
             } else {
                 _drawFrameERPWithoutIndex();
             }
 
-        } else if (this->projectionMode == EQUAL_AREA) {
-            if (drawMode == USE_INDEX) {
+        } else if (this->projectionMode == PM_EQUALAREA) {
+            if (drawMode == DM_USE_INDEX) {
                 _drawFrameCPPWithIndex();
             } else {
                 _drawFrameCPPWithoutIndex();
             }
-        } else if (this->projectionMode == EQUAL_DISTANCE) {
+        } else if (this->projectionMode == PM_EQUAL_DISTANCE) {
             _drawFrameCppEqualDistance();
         }
     }
@@ -837,8 +872,6 @@ namespace Player {
 
         computeMVPMatrix();
         glUseProgram(sceneProgramID);
-
-       
 
         glUniformMatrix4fv(sceneMVPMatrixPointer, 1, GL_FALSE, &mvpMatrix[0][0]);
         glBindVertexArray(sceneVAO);
@@ -873,8 +906,6 @@ namespace Player {
         computeMVPMatrix();
         glUseProgram(sceneProgramID);
 
-        
-
         glUniformMatrix4fv(sceneMVPMatrixPointer, 1, GL_FALSE, &mvpMatrix[0][0]);
 
         glBindVertexArray(sceneVAO);
@@ -905,8 +936,6 @@ namespace Player {
         computeMVPMatrix();
         glUseProgram(sceneProgramID);
 
-
-       
         glUniformMatrix4fv(sceneMVPMatrixPointer, 1, GL_FALSE, &mvpMatrix[0][0]);
 
         glBindVertexArray(sceneVAO);
@@ -987,7 +1016,7 @@ namespace Player {
             glBindTexture(GL_TEXTURE_2D, yuvTextures[i]);
             if (firstTime) {
                 glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, w, h, 0, GL_RED, GL_UNSIGNED_BYTE, static_cast<const GLvoid*>(yuvPlanes[i]));
-                //firstTime = false;
+                firstTime = true;
                 glCheckError();
             } else {
                 glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, GL_RED, GL_UNSIGNED_BYTE, static_cast<const GLvoid*>(yuvPlanes[i]));
@@ -1152,28 +1181,37 @@ namespace Player {
     }
 
     bool Player::decodeOneFrame() {
-        int readSuccess = av_read_frame(pFormatCtx, &packet);
-        if (readSuccess < 0) {
-            allFrameRead = true;
-            return false;
-        }
-
-        if (packet.stream_index == videoStream) {
-            avcodec_decode_video2(pCodecCtx, pFrame, &frameFinished, &packet);
-            if (frameFinished) {
-                avpicture_layout((AVPicture *)pFrame, AV_PIX_FMT_YUV420P, pCodecCtx->width, pCodecCtx->height, decodedBuffer, numBytes);
-
-                FILE *p = fopen("tmp.yuv", "ab+");
-                fwrite(decodedBuffer, sizeof(unsigned char), pCodecCtx->width*pCodecCtx->height * 3 / 2, p);
-                fflush(p);
-                fclose(p);
-                av_free_packet(&packet);
-                return true;
-            } else {
+        if (this->videoFileType == VFT_Encoded) {
+            int readSuccess = av_read_frame(pFormatCtx, &packet);
+            if (readSuccess < 0) {
+                allFrameRead = true;
                 return false;
             }
+
+            if (packet.stream_index == videoStream) {
+                avcodec_decode_video2(pCodecCtx, pFrame, &frameFinished, &packet);
+                if (frameFinished) {
+                    avpicture_layout((AVPicture *)pFrame, AV_PIX_FMT_YUV420P, pCodecCtx->width, pCodecCtx->height, decodedBuffer, numBytes);
+                    av_free_packet(&packet);
+                    return true;
+                } else {
+                    return false;
+                }
+            } else {
+                std::cout << "packet.stream_index != videoStream, will return false" << std::endl;
+                return false;
+            }
+        } else if (this->videoFileType == VFT_YUV) {
+            if (this->videoFileInputStream.peek() == EOF) {
+                allFrameRead = true;
+                return false;
+            }
+
+            static std::streampos pos = this->frameHeight * this->frameWidth*3/2;
+            this->videoFileInputStream.read((char *)rawBuffer, pos);
+            this->videoFileInputStream.seekg(pos,std::ios_base::_Seekcur);
+            return true;
         } else {
-            std::cout << "packet.stream_index != videoStream, will return false" << std::endl;
             return false;
         }
     }
@@ -1190,7 +1228,6 @@ namespace Player {
         timeMeasurer->Start();
         while (!bQuit && !allFrameRead) {
             if (decodeOneFrame()) {
-                this->setupTextureData(decodedBuffer);
                 this->drawFrame();
                 frameIndex++;
                 bQuit = handleInput();
@@ -1201,13 +1238,13 @@ namespace Player {
 
         std::string projectionMode;
         switch (this->projectionMode) {
-        case EQUAL_AREA:
+        case PM_EQUALAREA:
             projectionMode = "Craster Parabolic Projection";
             break;
-        case EQUAL_DISTANCE:
+        case PM_EQUAL_DISTANCE:
             projectionMode = "Equal Distance Projection";
             break;
-        case EQUIRECTANGULAR:
+        case PM_EQUIRECTANGULAR:
             projectionMode = "Equirectangular Projection";
             break;
         default:

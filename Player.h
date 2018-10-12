@@ -12,6 +12,7 @@
 #include "gtc/matrix_transform.hpp"
 #include "gtc/constants.hpp"
 #include "TimeMeasurer.h"
+#include <fstream>
 
 
 
@@ -31,17 +32,23 @@ extern "C"
 
 
 enum ProjectionMode {
-    EQUIRECTANGULAR = 0,
-    EQUAL_AREA,
-    EQUAL_DISTANCE,
+    PM_EQUIRECTANGULAR = 0,
+    PM_EQUALAREA,
+    PM_EQUAL_DISTANCE,
     PM_NOT_SPECIFIED
 };
 
 enum DrawMode {
-    USE_INDEX = 0,
-    DONT_USE_INDEX,
+    DM_USE_INDEX = 0,
+    DM_DONT_USE_INDEX,
     DM_NOT_SPECTIFIED
 };
+
+enum VideoFileType {
+    VFT_YUV = 0,
+    VFT_Encoded
+};
+
 
 typedef struct VertexStruct {
     float x;
@@ -60,7 +67,7 @@ namespace Player {
         //Player(int width, int height);
         Player(int width, int height, int numberOfPatches = 128);
         ~Player();
-        bool openVideoFile(const std::string &filePath);
+        bool openVideoFile(const std::string &filePath, VideoFileType fileType);
 
         bool setupTextureData(unsigned char *textureData);
         void renderLoop();
@@ -113,6 +120,7 @@ namespace Player {
         TimeMeasurer *timeMeasurer = NULL;
         ProjectionMode projectionMode;
         DrawMode drawMode;
+        VideoFileType videoFileType;
 
         glm::mat4 modelMatrix;
         glm::mat4 viewMatrix;
@@ -165,8 +173,9 @@ namespace Player {
         bool              allFrameRead = false;
         int               numBytes;
         uint8_t           *decodedBuffer = NULL;
+        uint8_t           *rawBuffer = NULL;
         struct SwsContext *sws_ctx = NULL;
-
+        std::ifstream     videoFileInputStream;
        
     };
 }

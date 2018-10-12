@@ -106,10 +106,11 @@ int main(int argv, char** args) {
 
     Player::Player *player = new Player::Player(frameWidth, frameHeight, patches);
 
-    std::string filePath = "D:\\WangZewei\\360Video\\shark.mp4";
+    //std::string filePath = "D:\\WangZewei\\360Video\\shark.mp4";
+    std::string filePath = "D:\\WangZewei\\YUV\\shark.yuv";
 
-    player->openVideoFile(filePath);
-    player->setupMode(EQUIRECTANGULAR, USE_INDEX);
+    player->openVideoFile(filePath, VFT_YUV);
+    player->setupMode(PM_EQUIRECTANGULAR, DM_USE_INDEX);
     player->renderLoop();
 
     /*uint8_t *yuvData = new uint8_t[frameHeight*frameWidth * 3 / 2];
@@ -125,13 +126,13 @@ int main(int argv, char** args) {
 
     readDataFromFile("D:\\WangZewei\\YUV\\kite.yuv", yuvData, frameWidth, frameHeight);
     convertYUV2RGB(yuvData, rgbData, frameWidth, frameHeight);
-    player->setupMode(EQUIRECTANGULAR, DONT_USE_INDEX);
+    player->setupMode(PM_EQUIRECTANGULAR, DM_DONT_USE_INDEX);
     player->setupTextureData(rgbData);
     player->renderLoop();
 
     readDataFromFile("D:\\WangZewei\\YUV\\kite_cpp.yuv", yuvData, frameWidth, frameHeight);
     convertYUV2RGB(yuvData, rgbData, frameWidth, frameHeight);
-    player->setupMode(EQUAL_DISTANCE, DONT_USE_INDEX);
+    player->setupMode(PM_EQUAL_DISTANCE, DM_DONT_USE_INDEX);
     player->setupTextureData(rgbData);
     player->renderLoop();
 
