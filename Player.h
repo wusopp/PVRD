@@ -32,21 +32,21 @@ extern "C"
 
 
 enum ProjectionMode {
-    PM_EQUIRECTANGULAR = 0,
-    PM_EQUALAREA,
-    PM_EQUAL_DISTANCE,
-    PM_NOT_SPECIFIED
+    PM_ERP = 0, // ERP格式
+    PM_CPP_OBSOLETE,
+    PM_CPP, // CPP格式
+    PM_NOT_SPECIFIED, // 未指定格式
 };
 
 enum DrawMode {
-    DM_USE_INDEX = 0,
-    DM_DONT_USE_INDEX,
-    DM_NOT_SPECTIFIED
+    DM_USE_INDEX = 0, // 使用索引进行绘制
+    DM_DONT_USE_INDEX, // 不使用索引进行绘制
+    DM_NOT_SPECTIFIED // 绘制方法未指定
 };
 
 enum VideoFileType {
-    VFT_YUV = 0,
-    VFT_Encoded
+    VFT_YUV = 0, // YUV Raw格式
+    VFT_Encoded // 经过封装的视频格式如mp4
 };
 
 
@@ -63,14 +63,22 @@ typedef struct VertexStruct {
 namespace Player {
     class Player {
     public:
+
         Player(int numberOfPatches);
-        //Player(int width, int height);
+        
         Player(int width, int height, int numberOfPatches = 128);
         ~Player();
+
+        // 打开视频文件, 需要指定文件路径和文件类型
         bool openVideoFile(const std::string &filePath, VideoFileType fileType);
 
+        // 将解码出的YUV用作纹理数据, 每帧绘制前均需要设置
         bool setupTextureData(unsigned char *textureData);
+
+        // 解码和渲染循环
         void renderLoop();
+
+        // 设置投影和绘制格式, 必须在renderLoop之前进行
         void setupMode(ProjectionMode projection, DrawMode draw);
 
     private:

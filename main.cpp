@@ -72,7 +72,7 @@ void ShowDecoderCapability() {
 
 int main(int argv, char** args) {
 
-    int patches;
+    int patches = 128;
     if(argv == 1) {
         patches = 128;
     } else {
@@ -83,26 +83,8 @@ int main(int argv, char** args) {
         }
     }
 
-    //ShowDecoderCapability();
-
     int frameWidth = 3840;
     int frameHeight = 1920;
-
-    //int frameWidth = 1280;
-    //int frameHeight = 640;
-
-    //int frameWidth = 1920;
-    //int frameHeight = 960;
-
-
-    /*int iGpu = 0;
-    char *fileName = args[2];
-    CheckInputFile(fileName);
-    ck(cuInit(0));
-    int nGpu = 0;
-    ck(cuDeviceGetCount(&nGpu));
-    CUdevice cuDevice = 0;
-    ck(cuDeviceGet(&cuDevice, iGpu));*/
 
     Player::Player *player = new Player::Player(frameWidth, frameHeight, patches);
 
@@ -110,34 +92,9 @@ int main(int argv, char** args) {
     std::string filePath = "D:\\WangZewei\\YUV\\shark.yuv";
 
     player->openVideoFile(filePath, VFT_YUV);
-    player->setupMode(PM_EQUIRECTANGULAR, DM_USE_INDEX);
+    player->setupMode(PM_ERP, DM_USE_INDEX);
     player->renderLoop();
 
-    /*uint8_t *yuvData = new uint8_t[frameHeight*frameWidth * 3 / 2];
-    if(yuvData == NULL) {
-        std::cout << __FUNCTION__ << " - Failed to allocate memory for YUV data." << std::endl;
-        return 0; 
-    }
-    uint8_t *rgbData = new uint8_t[frameHeight*frameWidth * 3];
-    if(rgbData == NULL) {
-        std::cout << __FUNCTION__ << " - Failed to allocate memory for RGB data." << std::endl;
-        return 0;
-    }
-
-    readDataFromFile("D:\\WangZewei\\YUV\\kite.yuv", yuvData, frameWidth, frameHeight);
-    convertYUV2RGB(yuvData, rgbData, frameWidth, frameHeight);
-    player->setupMode(PM_EQUIRECTANGULAR, DM_DONT_USE_INDEX);
-    player->setupTextureData(rgbData);
-    player->renderLoop();
-
-    readDataFromFile("D:\\WangZewei\\YUV\\kite_cpp.yuv", yuvData, frameWidth, frameHeight);
-    convertYUV2RGB(yuvData, rgbData, frameWidth, frameHeight);
-    player->setupMode(PM_EQUAL_DISTANCE, DM_DONT_USE_INDEX);
-    player->setupTextureData(rgbData);
-    player->renderLoop();
-
-    delete[] yuvData;
-    delete[] rgbData;*/
     delete player;
     return 0;
 }

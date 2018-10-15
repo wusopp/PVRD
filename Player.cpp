@@ -51,16 +51,6 @@ static const char FRAGMENT_SHADER[] =
 "                      1.0);\n"
 "}\n";
 
-static const GLfloat quadData[] = {
-    -1.0f,-1.0f,0.0f,1.0f,
-    1.0f,-1.0f,0.0f,1.0f,
-    1.0f,1.0f,0.0f,1.0f,
-    -1.0f,1.0f,0.0f,1.0f,
-    0.0f,1.0f,
-    1.0f,1.0f,
-    1.0f,0.0f,
-    0.0f,0.0f
-};
 
 void addShader(int type, const char * source, int program) {
     int shader = glCreateShader(type);
@@ -345,19 +335,19 @@ namespace Player {
     */
     bool Player::setupCoordinates() {
         bool result;
-        if (this->projectionMode == PM_EQUALAREA) {
+        if (this->projectionMode == PM_CPP_OBSOLETE) {
             if (this->drawMode == DM_USE_INDEX) {
                 result = _setupCPPCoordinatesWithIndex();
             } else {
                 result = _setupCPPCoordinatesWithoutIndex();
             }
-        } else if (this->projectionMode == PM_EQUIRECTANGULAR){
+        } else if (this->projectionMode == PM_ERP){
             if (this->drawMode == DM_USE_INDEX) {
                 result = _setupERPCoordinatesWithIndex();
             } else {
                 result = _setupERPCoordinatesWithoutIndex();
             }
-        } else if (this->projectionMode == PM_EQUAL_DISTANCE) {
+        } else if (this->projectionMode == PM_CPP) {
             setupCppEqualDistanceCoordinates();
             result = true;
         }
@@ -844,20 +834,20 @@ namespace Player {
             return;
         }
 
-        if (this->projectionMode == PM_EQUIRECTANGULAR) {
+        if (this->projectionMode == PM_ERP) {
             if (drawMode == DM_USE_INDEX) {
                 _drawFrameERPWithIndex();
             } else {
                 _drawFrameERPWithoutIndex();
             }
 
-        } else if (this->projectionMode == PM_EQUALAREA) {
+        } else if (this->projectionMode == PM_CPP_OBSOLETE) {
             if (drawMode == DM_USE_INDEX) {
                 _drawFrameCPPWithIndex();
             } else {
                 _drawFrameCPPWithoutIndex();
             }
-        } else if (this->projectionMode == PM_EQUAL_DISTANCE) {
+        } else if (this->projectionMode == PM_CPP) {
             _drawFrameCppEqualDistance();
         }
     }
@@ -1238,13 +1228,13 @@ namespace Player {
 
         std::string projectionMode;
         switch (this->projectionMode) {
-        case PM_EQUALAREA:
+        case PM_CPP_OBSOLETE:
             projectionMode = "Craster Parabolic Projection";
             break;
-        case PM_EQUAL_DISTANCE:
+        case PM_CPP:
             projectionMode = "Equal Distance Projection";
             break;
-        case PM_EQUIRECTANGULAR:
+        case PM_ERP:
             projectionMode = "Equirectangular Projection";
             break;
         default:
