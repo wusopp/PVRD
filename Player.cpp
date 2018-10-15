@@ -1085,7 +1085,10 @@ namespace Player {
         glCheckError();
         glBindTexture(GL_TEXTURE_2D, sceneTextureID);
         glCheckError();
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, frameWidth, frameHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, textureData);
+
+       //glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, frameWidth, frameHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, textureData);
+        unsigned int size = ((frameWidth + 3) / 4)*((frameHeight + 3) / 4)*8;
+        glCompressedTexImage2D(GL_TEXTURE_2D, 0, GL_COMPRESSED_RGBA_S3TC_DXT1_EXT, frameWidth, frameHeight, 0, size, compressedTexture);
         glCheckError();
 #endif
 
