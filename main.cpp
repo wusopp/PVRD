@@ -88,10 +88,10 @@ int main(int argv, char** args) {
 
     Player::Player *player = new Player::Player(frameWidth, frameHeight, patches);
 
-    //std::string filePath = "D:\\WangZewei\\360Video\\shark.mp4";
-    std::string filePath = "D:\\WangZewei\\YUV\\shark.yuv";
+    std::string filePath = "D:\\WangZewei\\360Video\\shark.mp4";
+    //std::string filePath = "D:\\WangZewei\\YUV\\shark.yuv";
 
-    player->openVideoFile(filePath, VFT_YUV);
+    player->openVideoFile(filePath, VFT_Encoded);
     player->setupMode(PM_ERP, DM_USE_INDEX);
     player->renderLoop();
 

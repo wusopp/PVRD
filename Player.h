@@ -176,11 +176,14 @@ namespace Player {
         AVCodecContext    *pCodecCtx = NULL;
         AVCodec           *pCodec = NULL;
         AVFrame           *pFrame = NULL;
+        AVFrame           *pFrameRGB = NULL;
         AVPacket          packet;
         int               frameFinished;
         bool              allFrameRead = false;
         int               numBytes;
-        uint8_t           *decodedBuffer = NULL;
+        uint8_t           *decodedBufferRGB24 = NULL;
+        uint8_t           *compressedTexture = NULL;
+        uint8_t           *decodedBufferRGBA = NULL;
         uint8_t           *rawBuffer = NULL;
         struct SwsContext *sws_ctx = NULL;
         std::ifstream     videoFileInputStream;

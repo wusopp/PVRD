@@ -2,6 +2,8 @@
 #include <cmath>
 #include <iostream>
 #include <string>
+#define STB_DXT_IMPLEMENTATION
+#include "stb_dxt.h"
 
 #define glCheckError() glCheckError_(__LINE__)
 #define logLine() printf("Line:%d, %s\n",__LINE__,__FUNCTION__);
@@ -134,6 +136,18 @@ namespace Player {
 
         if (videoFileInputStream.is_open()) {
             videoFileInputStream.close();
+        }
+        
+
+
+        if (compressedTexture != NULL) {
+            delete[] compressedTexture;
+            compressedTexture = NULL;
+        }
+
+        if (decodedBufferRGBA != NULL) {
+            delete[] decodedBufferRGBA;
+            decodedBufferRGBA = NULL;
         }
 
         destroyGL();
@@ -268,12 +282,32 @@ namespace Player {
                 return false;
             }
 
+            pFrameRGB = av_frame_alloc();
+            
+
+
             av_init_packet(&packet);
 
-            numBytes = avpicture_get_size(AV_PIX_FMT_YUV420P, pCodecCtx->width, pCodecCtx->height);
-            decodedBuffer = (uint8_t *)av_malloc(numBytes * sizeof(uint8_t));
+            numBytes = avpicture_get_size(AV_PIX_FMT_RGB24, pCodecCtx->width, pCodecCtx->height);
+            decodedBufferRGB24 = (uint8_t *)av_malloc(numBytes * sizeof(uint8_t));
 
-            if (decodedBuffer == NULL) {
+            decodedBufferRGBA = new uint8_t[numBytes * sizeof(uint8_t) / 3 * 4];
+            if (decodedBufferRGBA == NULL) {
+                std::cout << "Failed to malloc for decodedBufferRGBA!" << std::endl;
+                return false;
+            }
+
+            compressedTexture = new uint8_t[numBytes * sizeof(uint8_t) / 3 * 4 / 8];
+            if (compressedTexture == NULL) {
+                std::cout << "Failed to malloc for compressedTexture!" << std::endl;
+                return false;
+            }
+
+            avpicture_fill((AVPicture *)pFrameRGB, decodedBufferRGB24, AV_PIX_FMT_RGB24, pCodecCtx->width, pCodecCtx->height);
+
+            sws_ctx = sws_getContext(pCodecCtx->width, pCodecCtx->height, pCodecCtx->pix_fmt, pCodecCtx->width, pCodecCtx->height, AV_PIX_FMT_RGB24,SWS_BILINEAR,NULL,NULL,NULL);
+
+            if (decodedBufferRGB24 == NULL) {
                 return false;
             }
 
@@ -831,7 +865,6 @@ namespace Player {
         v = y / frameHeight;
     }
 
-    
 
     /**
     * 根据投影格式来调用不同的渲染方法
@@ -840,7 +873,7 @@ namespace Player {
         if (this->videoFileType == VFT_YUV) {
             this->setupTextureData(rawBuffer);
         } else if (this->videoFileType == VFT_Encoded) {
-            this->setupTextureData(decodedBuffer);
+            this->setupTextureData(decodedBufferRGBA);
         } else {
             return;
         }
@@ -1052,7 +1085,7 @@ namespace Player {
         glCheckError();
         glBindTexture(GL_TEXTURE_2D, sceneTextureID);
         glCheckError();
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, frameWidth, frameHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, frameWidth, frameHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, textureData);
         glCheckError();
 #endif
 
@@ -1137,7 +1170,7 @@ namespace Player {
     }
 
     void Player::destroyCodec() {
-        av_free(decodedBuffer);
+        av_free(decodedBufferRGB24);
         
         if (&pFrame != NULL) {
             av_frame_free(&pFrame);
@@ -1247,7 +1280,17 @@ namespace Player {
             if (packet.stream_index == videoStream) {
                 avcodec_decode_video2(pCodecCtx, pFrame, &frameFinished, &packet);
                 if (frameFinished) {
-                    avpicture_layout((AVPicture *)pFrame, AV_PIX_FMT_YUV420P, pCodecCtx->width, pCodecCtx->height, decodedBuffer, numBytes);
+                    sws_scale(sws_ctx, (uint8_t const *const *)pFrame->data,
+                        pFrame->linesize, 0, pCodecCtx->height,
+                        pFrameRGB->data, pFrameRGB->linesize);
+                    avpicture_layout((AVPicture *)pFrameRGB, AV_PIX_FMT_RGB24, pCodecCtx->width, pCodecCtx->height, decodedBufferRGB24, numBytes);
+
+                    
+                    fast_unpack((char *)decodedBufferRGBA, (const char *)decodedBufferRGB24, pCodecCtx->width * pCodecCtx->height);
+
+                    rygCompress(compressedTexture, decodedBufferRGBA, pCodecCtx->width, pCodecCtx->height,0);
+                    
+
                     av_free_packet(&packet);
                     return true;
                 } else {
@@ -1286,8 +1329,8 @@ namespace Player {
             if (decodeOneFrame()) {
                 this->drawFrame();
                 frameIndex++;
-                bQuit = handleInput();
             }
+            bQuit = handleInput();
         }
         __int64 time = timeMeasurer->elapsedMillionSecondsSinceStart();
         double average = 1.0 * time / frameIndex;

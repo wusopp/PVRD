@@ -162,6 +162,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Player.h" />
+    <ClInclude Include="stb_dxt.h" />
     <ClInclude Include="TimeMeasurer.h" />
     <ClInclude Include="yuvConverter.h" />
   </ItemGroup>
