@@ -6,6 +6,8 @@
 #define glCheckError() glCheckError_(__LINE__)
 #define logLine() printf("Line:%d, %s\n",__LINE__,__FUNCTION__);
 
+#define RENDER_YUV 0
+
 void glCheckError_(int line) {
     GLenum errorCode;
     char error[100];
@@ -35,6 +37,7 @@ static const char VERTEX_SHADER[] =
 "	gl_Position = matrix * position;\n"
 "}\n";
 
+#if RENDER_YUV
 static const char FRAGMENT_SHADER[] =
 "precision mediump float;\n"
 "varying vec2 uvCoordsOut;\n"
@@ -50,7 +53,15 @@ static const char FRAGMENT_SHADER[] =
 "                      y + 2.018 * u, "
 "                      1.0);\n"
 "}\n";
-
+#else 
+static const char FRAGMENT_SHADER[] =
+"#version 410 core\n"
+"uniform sampler2D mytexture;\n"
+"in vec2 uvCoordsOut;\n"
+"void main() {\n"
+"	gl_FragColor = texture(mytexture,uvCoordsOut);\n"
+"}\n";
+#endif
 
 void addShader(int type, const char * source, int program) {
     int shader = glCreateShader(type);
@@ -863,6 +874,12 @@ namespace Player {
         computeMVPMatrix();
         glUseProgram(sceneProgramID);
 
+#if RENDER_YUV
+#else 
+        glBindTexture(GL_TEXTURE_2D, sceneTextureID);
+        glCheckError();
+#endif
+
         glUniformMatrix4fv(sceneMVPMatrixPointer, 1, GL_FALSE, &mvpMatrix[0][0]);
         glBindVertexArray(sceneVAO);
 
@@ -896,6 +913,11 @@ namespace Player {
         computeMVPMatrix();
         glUseProgram(sceneProgramID);
 
+#if RENDER_YUV
+#else 
+        glBindTexture(GL_TEXTURE_2D, sceneTextureID);
+        glCheckError();
+#endif
         glUniformMatrix4fv(sceneMVPMatrixPointer, 1, GL_FALSE, &mvpMatrix[0][0]);
 
         glBindVertexArray(sceneVAO);
@@ -926,6 +948,12 @@ namespace Player {
         computeMVPMatrix();
         glUseProgram(sceneProgramID);
 
+#if RENDER_YUV
+#else 
+        glBindTexture(GL_TEXTURE_2D, sceneTextureID);
+        glCheckError();
+#endif
+
         glUniformMatrix4fv(sceneMVPMatrixPointer, 1, GL_FALSE, &mvpMatrix[0][0]);
 
         glBindVertexArray(sceneVAO);
@@ -955,6 +983,12 @@ namespace Player {
 
         computeMVPMatrix();
         glUseProgram(sceneProgramID);
+
+#if RENDER_YUV
+#else 
+        glBindTexture(GL_TEXTURE_2D, sceneTextureID);
+        glCheckError();
+#endif
 
         glUniformMatrix4fv(sceneMVPMatrixPointer, 1, GL_FALSE, &mvpMatrix[0][0]);
 
@@ -993,6 +1027,7 @@ namespace Player {
         glUseProgram(sceneProgramID);
         glCheckError();
         
+#if RENDER_YUV
         unsigned char *yuvPlanes[3];
         yuvPlanes[0] = textureData;
         yuvPlanes[1] = textureData + this->frameWidth * this->frameHeight;
@@ -1013,6 +1048,13 @@ namespace Player {
                 glCheckError();
             }
         }
+#else 
+        glCheckError();
+        glBindTexture(GL_TEXTURE_2D, sceneTextureID);
+        glCheckError();
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, frameWidth, frameHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
+        glCheckError();
+#endif
 
         glCheckError();
         return true;
@@ -1150,8 +1192,8 @@ namespace Player {
     */
     bool Player::setupTexture() {
         glUseProgram(sceneProgramID);
+#if RENDER_YUV
         glGenTextures(3, yuvTextures);
-       
         for (int i = 0; i < 3; i++) {
             glUniform1i(glGetUniformLocation(sceneProgramID, TEXTURE_UNIFORMS[i]), i);
             glActiveTexture(GL_TEXTURE0 + i);
@@ -1165,9 +1207,33 @@ namespace Player {
             glTexParameterf(GL_TEXTURE_2D,
                 GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
         } 
+#else 
+        glGenTextures(1, &sceneTextureID);
+        glUniform1i(glGetUniformLocation(sceneProgramID, "mytexture"), 0);
+        glBindTexture(GL_TEXTURE_2D, sceneTextureID);
+        glTexParameterf(GL_TEXTURE_2D,
+            GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameterf(GL_TEXTURE_2D,
+            GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameterf(GL_TEXTURE_2D,
+            GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameterf(GL_TEXTURE_2D,
+            GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+#endif
         glUseProgram(0);
         glCheckError();
         return true;
+    }
+
+    void fast_unpack(char* rgba, const char* rgb, const int count) {
+        if (count == 0)
+            return;
+        for (int i = count; --i; rgba += 4, rgb += 3) {
+            *(uint32_t*)(void*)rgba = *(const uint32_t*)(const void*)rgb;
+        }
+        for (int j = 0; j<3; ++j) {
+            rgba[j] = rgb[j];
+        }
     }
 
     bool Player::decodeOneFrame() {
