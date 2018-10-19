@@ -136,6 +136,10 @@ namespace Player {
             videoFileInputStream.close();
         }
 
+        if (rgbaBuffer != NULL) {
+            cudaFree(rgbaBuffer);
+            rgbaBuffer = NULL;
+        }
         destroyGL();
         destroyCodec();
         SDL_Quit();
@@ -206,15 +210,23 @@ namespace Player {
             std::cout << __FUNCTION__ << "- setupCodec failed." << std::endl;
             return false;
         }
+
+
+        mainGLRenderContext = wglGetCurrentContext();
+        mainDeviceContext = wglGetCurrentDC();
+        if (!mainGLRenderContext || !mainDeviceContext) {
+            return false;
+        }
         return true;
     }
 
+   
 
     bool Player::openVideoFile(const std::string &filePath, VideoFileType fileType) {
 
         this->videoFileType = fileType;
 
-        if (fileType == VFT_Encoded) {
+        if (fileType == VFT_Encoded && decodeType == DT_SOFTWARE) {
             if (filePath.length() == 0) {
                 return false;
             }
@@ -278,6 +290,43 @@ namespace Player {
             }
 
             return true;
+        } else if (fileType == VFT_Encoded && decodeType == DT_HARDWARE) {
+            if (filePath.length() == 0) {
+                return false;
+            }
+
+            if (avformat_open_input(&pFormatCtx, filePath.c_str(), NULL, NULL) != 0) {
+                return false;
+            }
+
+            if (avformat_find_stream_info(pFormatCtx, NULL) < 0) {
+                return false;
+            }
+
+            av_dump_format(pFormatCtx, 0, filePath.c_str(), 0);
+
+            videoStream = -1;
+
+            for (int i = 0; i < pFormatCtx->nb_streams; i++) {
+                if (pFormatCtx->streams[i]->codec->codec_type == AVMEDIA_TYPE_VIDEO) {
+                    videoStream = i;
+                    break;
+                }
+            }
+            if (videoStream == -1) {
+                return false;
+            }
+
+            pNVDecoder->parseCommandLineArguments();
+
+            if (pNVDecoder->init(pFormatCtx, false, 0, frameWidth, frameHeight) == false) {
+                std::cout << "Failed to init nvDecoder" << std::endl;
+                return false;
+            }
+
+           
+            
+
         } else if (fileType == VFT_YUV) {
             this->videoFileInputStream.open(filePath, std::ios::binary | std::ios::in);
 
@@ -839,8 +888,19 @@ namespace Player {
     void Player::drawFrame() {
         if (this->videoFileType == VFT_YUV) {
             this->setupTextureData(rawBuffer);
-        } else if (this->videoFileType == VFT_Encoded) {
+        } else if (this->videoFileType == VFT_Encoded && this->decodeType == DT_SOFTWARE) {
             this->setupTextureData(decodedBuffer);
+        } else if (this->videoFileType == VFT_Encoded && this->decodeType == DT_HARDWARE) {
+            static bool firstTime = true;
+            if (firstTime) {
+                bool make = wglMakeCurrent(mainDeviceContext, mainGLRenderContext);
+                if (make) {
+                    std::cout << "wglMakeCurrent okay" << std::endl;
+                } else {
+                    std::cout << "wglMakeCurrent error" << std::endl;
+                }
+                firstTime = false;
+            }
         } else {
             return;
         }
@@ -1063,9 +1123,10 @@ namespace Player {
     /**
     * 设置投影和绘图格式
     */
-    void Player::setupMode(ProjectionMode projection, DrawMode draw) {
+    void Player::setupMode(ProjectionMode projection, DrawMode draw, DecodeType decode) {
         this->projectionMode = projection;
         this->drawMode = draw;
+        this->decodeType = decode;
         setupCoordinates();
     }
 
@@ -1156,7 +1217,11 @@ namespace Player {
         if (&pFormatCtx != NULL) {
             avformat_close_input(&pFormatCtx);
         }
-        
+
+        if (pNVDecoder != NULL) {
+            pNVDecoder->cleanup(true);
+            pNVDecoder = NULL;
+        }
     }
 
     /**
@@ -1237,7 +1302,7 @@ namespace Player {
     }
 
     bool Player::decodeOneFrame() {
-        if (this->videoFileType == VFT_Encoded) {
+        if (this->videoFileType == VFT_Encoded && this->decodeType == DT_SOFTWARE) {
             int readSuccess = av_read_frame(pFormatCtx, &packet);
             if (readSuccess < 0) {
                 allFrameRead = true;
@@ -1257,6 +1322,24 @@ namespace Player {
                 std::cout << "packet.stream_index != videoStream, will return false" << std::endl;
                 return false;
             }
+        } else if (this->videoFileType == VFT_Encoded && this->decodeType == DT_HARDWARE) {
+            int readSuccess = av_read_frame(pFormatCtx, &packet);
+            if (readSuccess < 0) {
+                allFrameRead = true;
+                return false;
+            }
+            if (packet.stream_index == videoStream) {
+                inputPacket.payload = packet.data;
+                inputPacket.payload_size = packet.size;
+                inputPacket.flags = CUVID_PKT_TIMESTAMP;
+                cuvidParseVideoData(pNVDecoder->g_pVideoSource->oSourceData_.hVideoParser, &inputPacket);
+                bool needsCudaMalloc = true;
+                if (pNVDecoder->copyDecodedFrameToTexture(&rgbaBuffer, frameHeight, frameWidth, this->cudaTextureID, this->mainDeviceContext, this->mainGLRenderContext, needsCudaMalloc)) {
+                    av_free_packet(&packet);
+                    return true;
+                }
+            }
+
         } else if (this->videoFileType == VFT_YUV) {
             if (this->videoFileInputStream.peek() == EOF) {
                 allFrameRead = true;
@@ -1586,3 +1669,31 @@ namespace Player {
     }
 }
 
+namespace Player {
+    void Player::setupCudaTexture() {
+        cudaDeviceProp prop;
+        int dev;
+        memset(&prop, 0, sizeof(cudaDeviceProp));
+
+        prop.major = 1;
+        prop.minor = 0;
+
+        cudaChooseDevice(&dev, &prop);
+
+        cudaGLSetGLDevice(dev);
+
+        glEnable(GL_TEXTURE_2D);
+        glGenTextures(1, &cudaTextureID);
+
+        glBindTexture(GL_TEXTURE_2D, cudaTextureID);
+
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, frameWidth, frameHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+
+        glBindTexture(GL_TEXTURE_2D, 0);
+    }
+}

@@ -29,7 +29,7 @@
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v140</PlatformToolset>
-    <CharacterSet>Unicode</CharacterSet>
+    <CharacterSet>NotSet</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
@@ -89,7 +89,7 @@
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>false</SDLCheck>
-      <AdditionalIncludeDirectories>$(CUDA_PATH)\include;$(SolutionDir)\DisplayCPP\ThirdParty\glew-1.11.0\include\GL;$(SolutionDir)\DisplayCPP\ThirdParty\glm;$(SolutionDir)\DisplayCPP\ThirdParty\d3d\Include;$(SolutionDir)\DisplayCPP\ThirdParty\cuvid\inc;$(SolutionDir)\DisplayCPP\ThirdParty\sdl2-2.0.3\include;$(SolutionDir)\DisplayCPP\ThirdParty\ffmpeg\include;$(SolutionDir)\DisplayCPP\ThirdParty\Utils\;$(SolutionDir)\DisplayCPP\ThirdParty\NvCodec\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(CUDA_PATH)\include\;$(SolutionDir)\DisplayCPP\ThirdParty\glew-1.11.0\include\GL;$(SolutionDir)\DisplayCPP\ThirdParty\glm;$(SolutionDir)\DisplayCPP\ThirdParty\d3d\Include;$(SolutionDir)\DisplayCPP\ThirdParty\cuvid\inc;$(SolutionDir)\DisplayCPP\ThirdParty\sdl2-2.0.3\include;$(SolutionDir)\DisplayCPP\ThirdParty\ffmpeg\include;$(SolutionDir)\DisplayCPP\ThirdParty\NVDecoder;$(SolutionDir)\DisplayCPP\ThirdParty\Utils\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <AdditionalOptions>/D _CRT_SECURE_NO_WARNINGS %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
@@ -157,13 +157,26 @@
   <ItemGroup>
     <ClCompile Include="Player.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="ThirdParty\NVDecoder\FrameQueue.cpp" />
+    <ClCompile Include="ThirdParty\NVDecoder\NvDecoder.cpp" />
+    <ClCompile Include="ThirdParty\NVDecoder\VideoDecoder.cpp" />
+    <ClCompile Include="ThirdParty\NVDecoder\VideoParser.cpp" />
+    <ClCompile Include="ThirdParty\NVDecoder\VideoSource.cpp" />
     <ClCompile Include="TimeMeasurer.cpp" />
     <ClCompile Include="yuvConverter.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Player.h" />
+    <ClInclude Include="ThirdParty\NVDecoder\FrameQueue.h" />
+    <ClInclude Include="ThirdParty\NVDecoder\NvDecoder.h" />
+    <ClInclude Include="ThirdParty\NVDecoder\VideoDecoder.h" />
+    <ClInclude Include="ThirdParty\NVDecoder\VideoParser.h" />
+    <ClInclude Include="ThirdParty\NVDecoder\VideoSource.h" />
     <ClInclude Include="TimeMeasurer.h" />
     <ClInclude Include="yuvConverter.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="NV12TORGBA.cu" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

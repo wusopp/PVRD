@@ -13,6 +13,13 @@
 #include "gtc/constants.hpp"
 #include "TimeMeasurer.h"
 #include <fstream>
+#include "dynlink_nvcuvid.h"
+#include "NvDecoder.h"
+#include <cuda.h>
+#include <cuda_runtime.h>
+#include <device_functions.h>
+#include <cuda_gl_interop.h>
+#include <device_launch_parameters.h>
 
 
 
@@ -49,6 +56,11 @@ enum VideoFileType {
     VFT_Encoded // 经过封装的视频格式如mp4
 };
 
+enum DecodeType {
+    DT_HARDWARE = 0,
+    DT_SOFTWARE,
+    DT_NOT_SPECTIFIED
+};
 
 typedef struct VertexStruct {
     float x;
@@ -79,7 +91,12 @@ namespace Player {
         void renderLoop();
 
         // 设置投影和绘制格式, 必须在renderLoop之前进行
-        void setupMode(ProjectionMode projection, DrawMode draw);
+        void setupMode(ProjectionMode projection, DrawMode draw, DecodeType decode);
+
+    public:
+        HGLRC mainGLRenderContext;
+        HDC mainDeviceContext;
+        GLuint cudaTextureID;
 
     private:
         bool init();
@@ -129,6 +146,7 @@ namespace Player {
         ProjectionMode projectionMode;
         DrawMode drawMode;
         VideoFileType videoFileType;
+        DecodeType decodeType;
 
         glm::mat4 modelMatrix;
         glm::mat4 viewMatrix;
@@ -144,6 +162,16 @@ namespace Player {
         GLuint sceneUVBuffer;
         GLuint sceneIndexBuffer;
 
+    private:
+
+        void setupCudaTexture();
+
+        CUVIDSOURCEDATAPACKET inputPacket;
+        NvDecoder *pNVDecoder = NULL;
+        AVIOContext *ioContext;
+        AVInputFormat *inputFormat;
+        uint8_t *rgbaBuffer = NULL;
+        
     private:
         int pPreviousXposition;
         int pPreviousYposition;

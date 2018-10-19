@@ -27,6 +27,21 @@
     <ClCompile Include="TimeMeasurer.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="ThirdParty\NVDecoder\FrameQueue.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\NVDecoder\NvDecoder.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\NVDecoder\VideoDecoder.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\NVDecoder\VideoParser.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\NVDecoder\VideoSource.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="yuvConverter.h">
@@ -38,5 +53,25 @@
     <ClInclude Include="TimeMeasurer.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="ThirdParty\NVDecoder\VideoDecoder.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="ThirdParty\NVDecoder\VideoParser.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="ThirdParty\NVDecoder\VideoSource.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="ThirdParty\NVDecoder\NvDecoder.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="ThirdParty\NVDecoder\FrameQueue.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="NV12TORGBA.cu">
+      <Filter>源文件</Filter>
+    </None>
   </ItemGroup>
 </Project>

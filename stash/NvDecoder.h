@@ -9,21 +9,31 @@
 #include <windowsx.h>
 #pragma comment(lib, "version.lib")
 #endif
-//#include <glew.h>
-//#include "d3d9.h"
-//#include "d3dx9.h"
-//
-//#pragma comment(lib, "d3d9.lib")
-//#pragma comment(lib, "d3dx9.lib")
+
+#include "d3d9.h"
+#include "d3dx9.h"
+
+#pragma comment(lib, "d3d9.lib")
+#pragma comment(lib, "d3dx9.lib")
 
 // CUDA Header includes
-//#include "dynlink_nvcuvid.h"
-//#include "dynlink_cuda.h"
-//#include "dynlink_cudaD3D9.h"
-//#include "dynlink_cudaD3D10.h"
-//#include "dynlink_builtin_types.h"
+#include "dynlink_nvcuvid.h"  // <nvcuvid.h>
+#include "dynlink_cuda.h"     // <cuda.h>
+#include "dynlink_cudaD3D9.h" // <cudaD3D9.h>
+#include "dynlink_builtin_types.h"      // <builtin_types.h>
 
-#include "dynlink_nvcuvid.h"
+//ffmpeg
+extern "C"
+{
+#include "libavcodec/avcodec.h"
+#include "libavformat/avformat.h"
+#include "libswresample/swresample.h"
+#include <libswscale/swscale.h>
+#include <libswscale/swscale.h>
+#include <libavutil/avstring.h>
+#include <libavutil/time.h>
+#include "SDL_thread.h"
+};
 
 // CUDA utilities and system includes
 #include "helper_functions.h"
@@ -36,6 +46,9 @@
 #include "VideoDecoder.h"
 
 #include "cudaModuleMgr.h"
+#include "dynlink_nvcuvid.h"
+
+//#include "data.h"
 
 // Include files
 #include <math.h>
@@ -49,54 +62,29 @@
 #define ENABLE_DEBUG_OUT    0
 #endif
 
-#define VIDEO_FRAME_HEIGHT 1920
-#define VIDEO_FRAME_WIDTH 3840
 
-
-typedef struct OutputBuffer {
-    uint8_t			*data;
-    int				length;
-    volatile bool   used;
-    int				flags;
-    int			yStride;
-    int			uStride;
-    int			vStride;
-    int		    mWidth;
-    int 		mHeight;
-    uint32_t		timestamp;
-    int				index;
-    int				decodeTime;
-    int				err_code;
-
-    //new add
-    AVFrame			*frame;
-
-    int             frameCnt;
-
-} OutputBuffer;
- 
 class NvDecoder {
 
 public:
     NvDecoder();
-    bool            init(AVFormatContext *pFormatCtx, int bUseInterop, int bTCC);
+    bool            init(AVFormatContext *pFormatCtx,int bUseInterop, int bTCC);
     // Forward declarations
     bool            loadVideoSource(AVFormatContext *pFormatCtx);
     void            initCudaVideo();
 
     void            freeCudaResources(bool bDestroyContext);
 
-    bool            copyDecodedFrameToTexture(OutputBuffer *output);
+   // bool            copyDecodedFrameToTexture(OutputBuffer *output);
+	bool            copyDecodedFrameToTexture(uint8_t *output, int &flag);
     HRESULT         cleanup(bool bDestroyContext);
     HRESULT         initCudaResources(int bUseInterop, int bTCC);
-
-    void            renderVideoFrame(bool bUseInterop);
 
     void            parseCommandLineArguments();
     void            SaveFrameAsYUV(unsigned char *pdst, const unsigned char *psrc, int width, int height, int pitch);
     HRESULT         reinitCudaResources();
 
-    void                stop();
+    void            stop ();
+
     std::string         sFileName;
 
     FrameQueue          *g_pFrameQueue;
@@ -107,9 +95,6 @@ public:
     bool                g_bWaived;
 
 private:
-
-    StopWatchInterface *frame_timer;
-    StopWatchInterface *global_timer;
 
     bool                g_bDeviceLost;
     bool                g_bDone;
@@ -127,29 +112,33 @@ private:
     bool                g_bWriteFile;
     bool                g_bIsProgressive;
     bool                g_bException;
-
+    
     int                 g_iRepeatFactor;
     long                g_nFrameStart;
     long                g_nFrameEnd;
 
-    FILE *fpWriteYUV;
-    FILE *fpRefYUV;
-
     cudaVideoCreateFlags g_eVideoCreateFlags;
     CUvideoctxlock       g_CtxLock;
 
-    float present_fps, decoded_fps, total_time = 0.0f;
+   // float present_fps, decoded_fps, total_time = 0.0f;
 
-    //IDirect3DDevice9    *g_pD3DDevice;
+    //CUmodule            cuModNV12toARGB = 0;
+    //CUfunction          g_kernelNV12toARGB = 0;
+    //CUfunction          g_kernelPassThru = 0;
 
-    CUmodule            cuModNV12toARGB = 0;
-    CUfunction          g_kernelNV12toARGB = 0;
-    CUfunction          g_kernelPassThru = 0;
+    //CUcontext           g_oContext = 0;
+    //CUdevice            g_oDevice = 0;
+    //    
+    //CUstream            g_ReadbackSID = 0, g_KernelSID = 0;
 
-    CUcontext           g_oContext = 0;
-    CUdevice            g_oDevice = 0;
+	CUmodule            cuModNV12toARGB;
+	CUfunction          g_kernelNV12toARGB;
+	CUfunction          g_kernelPassThru;
 
-    CUstream            g_ReadbackSID = 0, g_KernelSID = 0;
+	CUcontext           g_oContext;
+	CUdevice            g_oDevice;
+
+	CUstream            g_ReadbackSID, g_KernelSID;
 
 
     // System Memory surface we want to readback to
@@ -170,9 +159,12 @@ private:
     unsigned int        g_fpsCount;      // FPS count for averaging
     unsigned int        g_fpsLimit;     // FPS limit for sampling timer;
 
-    const char *sAppName = "NVDECODE/D3D9 Video Decoder";
-    const char *sAppFilename = "NVDecodeD3D9";
-    const char *sSDKname = "NVDecodeD3D9";
+ //   const char *sAppName = "NVDECODE/D3D9 Video Decoder";
+	//const char *sAppFilename = "NVDecodeD3D9";
+	//const char *sSDKname = "NVDecodeD3D9";
+	const char *sAppName;
+	const char *sAppFilename;
+	const char *sSDKname;
 
 };
 

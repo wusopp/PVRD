@@ -145,6 +145,9 @@ class VideoSource
 		BOOL bThreadExit;
 
 		CUcontext          g_oContext ;
+
+
+
 };
 
 std::ostream & operator << (std::ostream &rOutputStream, const CUVIDEOFORMAT &rCudaVideoFormat);

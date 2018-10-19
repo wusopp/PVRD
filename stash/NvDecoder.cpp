@@ -1,8 +1,7 @@
 #include "NvDecoder.h"
 
+
 NvDecoder::NvDecoder() {
-    frame_timer         = NULL;
-    global_timer        = NULL;
 
     g_bDeviceLost       = false;
     g_bDone             = false;
@@ -24,9 +23,6 @@ NvDecoder::NvDecoder() {
     g_iRepeatFactor     = 1; // 1:1 assumes no frame repeats
     g_nFrameStart       = -1;
     g_nFrameEnd         = -1;
-
-    fpWriteYUV = NULL;
-    fpRefYUV = NULL;
 
     g_eVideoCreateFlags = cudaVideoCreate_Default;
     g_CtxLock = NULL;
@@ -87,15 +83,21 @@ bool NvDecoder::init(AVFormatContext *pFormatCtx,int bUseInterop, int bTCC) {
         return false;
     }
 
+	sAppName = "NVDECODE/D3D9 Video Decoder";
+	sAppFilename = "NVDecodeD3D9";
+	sSDKname = "NVDecodeD3D9";
+
     return true;
 }
 
 
-void NvDecoder::stop(){
-    this->g_pFrameQueue->endDecode();
-    this->g_pVideoSource->stop();
-    this->cleanup(!this->g_bWaived);
+void NvDecoder::stop () {
+    this->g_pFrameQueue->endDecode ();
+    this->g_pVideoSource->stop ();	
+    this->cleanup (!this->g_bWaived);//释放该类的几个指针
 }
+
+
 HRESULT NvDecoder::initCudaResources(int bUseInterop, int bTCC) {
     HRESULT hr = S_OK;
 
@@ -118,7 +120,7 @@ HRESULT NvDecoder::initCudaResources(int bUseInterop, int bTCC) {
 
 
     checkCudaErrors(cuCtxCreate(&g_oContext, CU_CTX_BLOCKING_SYNC, g_oDevice));
-    /*
+
     try {
         char FilePath[MAX_PATH + 1] = { 0 };
         char *p = NULL;
@@ -133,7 +135,7 @@ HRESULT NvDecoder::initCudaResources(int bUseInterop, int bTCC) {
         printf(">> Please rebuild NV12ToARGB_drvapi.cu or re-install this sample.\n");
         return E_FAIL;
     }
-    */
+
     /////////////////Change///////////////////////////
     // Now we create the CUDA resources and the CUDA decoder context
     initCudaVideo();
@@ -153,9 +155,9 @@ void NvDecoder::parseCommandLineArguments() {
     char *video_file, *yuv_file, *ref_yuv;
 
     //video_file = "rtsp://admin:admin123@192.168.101.54:554";
-    video_file = "small_2k.h265";
+    video_file = "";
 
-    yuv_file = "test_2k.yuv";
+    yuv_file = "";
     g_bReadback = true;
     g_bWriteFile = true;
 
@@ -180,35 +182,30 @@ void NvDecoder::parseCommandLineArguments() {
     }
 
     // Now verify the video file is legit
-    FILE *fp = NULL;
-    FOPEN(fp, video_file, "r");
-    if (video_file == NULL && fp == NULL) {
-        exit(EXIT_FAILURE);
-    }
+    //FILE *fp = NULL;
+    //FOPEN(fp, video_file, "r");
+    //if (video_file == NULL && fp == NULL) {
+    //    exit(EXIT_FAILURE);
+    //}
 
-    if (fp) {
-        fclose(fp);
-    }
+    //if (fp) {
+    //    fclose(fp);
+    //}
 
     // Now verify the input reference YUV file is legit
-    FOPEN(fpRefYUV, ref_yuv, "r");
-    if (ref_yuv == NULL && fpRefYUV == NULL) {
-        printf("[%s]: unable to find file: [%s]\nExiting...\n", sAppFilename, ref_yuv);
-        exit(EXIT_FAILURE);
-    }
+//     FOPEN(fpRefYUV, ref_yuv, "r");
+//     if (ref_yuv == NULL && fpRefYUV == NULL) {
+//         printf("[%s]: unable to find file: [%s]\nExiting...\n", sAppFilename, ref_yuv);
+//         exit(EXIT_FAILURE);
+//     }
 
     // default video file loaded by this sample
-    sFileName = video_file;
+   // sFileName = video_file;
 
-    if (g_bWriteFile && strlen(yuv_file) > 0) {
+ /*   if (g_bWriteFile && strlen(yuv_file) > 0) {
         printf("[%s]: output file: [%s]\n", sAppFilename, yuv_file);
-
-        FOPEN(fpWriteYUV, yuv_file, "wb");
-        if (fpWriteYUV == NULL) {
-            printf("Error opening file [%s]\n", yuv_file);
-        }
     }
-    printf("[%s]: input file:  [%s]\n", sAppFilename, video_file);
+    printf("[%s]: input file:  [%s]\n", sAppFilename, video_file);*/
 }
 
 
@@ -274,7 +271,7 @@ void NvDecoder::initCudaVideo() {
 }
 
 
-bool NvDecoder::copyDecodedFrameToTexture(OutputBuffer *output) {
+bool NvDecoder::copyDecodedFrameToTexture(uint8_t *output, int &flag) {
     CUVIDPARSERDISPINFO oDisplayInfo;
 
     if (g_pFrameQueue->dequeue(&oDisplayInfo)) {
@@ -290,7 +287,7 @@ bool NvDecoder::copyDecodedFrameToTexture(OutputBuffer *output) {
         }
 
         CUVIDPROCPARAMS oVideoProcessingParameters;
-        memset(&oVideoProcessingParameters, 0, sizeof(CUVIDPROCPARAMS));
+        memset (&oVideoProcessingParameters, 0, sizeof(CUVIDPROCPARAMS));
 
         oVideoProcessingParameters.progressive_frame = oDisplayInfo.progressive_frame;
         oVideoProcessingParameters.top_field_first = oDisplayInfo.top_field_first;
@@ -336,10 +333,10 @@ bool NvDecoder::copyDecodedFrameToTexture(OutputBuffer *output) {
                 }
             }
 
-            if (output->data == NULL) {
-                    output->data = (uint8_t*)malloc(VIDEO_FRAME_WIDTH * VIDEO_FRAME_HEIGHT * 1.5*sizeof(uint8_t));
-                }
-        
+            //if (output->data == NULL) {
+            //    output->data = (uint8_t*)malloc(ADAPTIVE_MAX_WD * ADAPTIVE_MAX_HT * 3/ 2*sizeof(uint8_t));
+            //}
+
             // If streams are enabled, we can perform the readback to the host while the kernel is executing
 
             CUresult result = cuMemcpyDtoHAsync(g_pFrameYUV[active_field], pDecodedFrame[active_field], (nDecodedPitch * nHeight * 3 / 2), g_ReadbackSID);
@@ -365,14 +362,10 @@ bool NvDecoder::copyDecodedFrameToTexture(OutputBuffer *output) {
 
             if (g_bWriteFile) {
                 checkCudaErrors(cuStreamSynchronize(g_ReadbackSID));
-                output->used = true;
-                output->mWidth = nWidth;
-                output->mHeight = nHeight;
-                output->timestamp = oDisplayInfo.timestamp;
-
-                SaveFrameAsYUV(output->data,//g_pFrameYUV[active_field + 3],
-                    g_pFrameYUV[active_field],                    
-                    nWidth, nHeight, nDecodedPitch);
+				flag = 1;
+				SaveFrameAsYUV(output,//g_pFrameYUV[active_field + 3],
+					g_pFrameYUV[active_field],
+					nWidth, nHeight, nDecodedPitch);
             }
         }
 
@@ -383,6 +376,7 @@ bool NvDecoder::copyDecodedFrameToTexture(OutputBuffer *output) {
     }
     else {
         // Frame Queue has no frames, we don't compute FPS until we start
+        flag = 0;
         return false;
     }
 
@@ -492,22 +486,25 @@ void NvDecoder::SaveFrameAsYUV(unsigned char *pdst,
 }
 
 
-
 void NvDecoder::freeCudaResources(bool bDestroyContext) {
     if (g_pVideoParser) {
         delete g_pVideoParser;
+		g_pVideoParser = NULL;
     }
 
     if (g_pVideoDecoder) {
         delete g_pVideoDecoder;
+		g_pVideoDecoder = NULL;
     }
 
     if (g_pVideoSource) {
         delete g_pVideoSource;
+		g_pVideoSource = NULL;
     }
 
     if (g_pFrameQueue) {
         delete g_pFrameQueue;
+		g_pFrameQueue = NULL;
     }
 
     if (g_ReadbackSID) {
@@ -529,11 +526,11 @@ void NvDecoder::freeCudaResources(bool bDestroyContext) {
 }
 
 HRESULT NvDecoder::cleanup(bool bDestroyContext) {
-    /*if (fpWriteYUV != NULL) {
-        fflush(fpWriteYUV);
-        fclose(fpWriteYUV);
-        fpWriteYUV = NULL;
-    }*/
+//     if (fpWriteYUV != NULL) {
+//         fflush(fpWriteYUV);
+//         fclose(fpWriteYUV);
+//         fpWriteYUV = NULL;
+//     }
 
     if (bDestroyContext) {
         // Attach the CUDA Context (so we may properly free memroy)
@@ -556,29 +553,7 @@ HRESULT NvDecoder::cleanup(bool bDestroyContext) {
         g_pFrameYUV[4] = NULL;
         g_pFrameYUV[5] = NULL;
     }
-
     freeCudaResources(bDestroyContext);
+
     return S_OK;
-}
-
-// Launches the CUDA kernels to fill in the texture data
-void NvDecoder::renderVideoFrame(bool bUseInterop) {
-    g_bRunning = true;
-    if (!g_bUseInterop) {
-        // On this case we drive the display with a while loop (no openGL calls)
-        while (!g_bDone) {
-            int bIsProgressive = 1;
-            bool bFramesDecoded = false;
-
-            if (0 != g_pFrameQueue) {
-                // if not running, we simply don't copy new frames from the decoder
-                if (!g_bDeviceLost && g_bRunning) {
-                    bFramesDecoded = copyDecodedFrameToTexture(NULL);
-                }
-            }
-            else {
-                return;
-            }
-        }
-    }
 }

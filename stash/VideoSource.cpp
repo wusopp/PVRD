@@ -18,9 +18,6 @@
 
 #include "helper_cuda_drvapi.h"
 
-
-#pragma warning(disable : 4996)
-
 AVCodecContext	*ppCodecCtx;
 AVFormatContext	*ppFormatCtx;
 //int				videoindex;
