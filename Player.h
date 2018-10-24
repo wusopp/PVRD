@@ -14,7 +14,7 @@
 #include "TimeMeasurer.h"
 #include <fstream>
 #include "dynlink_nvcuvid.h"
-#include "NvDecoder.h"
+#include "../../NVDecoder/NvDecoder.h"
 #include <cuda.h>
 #include <cuda_runtime.h>
 #include <device_functions.h>

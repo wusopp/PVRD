@@ -1352,6 +1352,17 @@ namespace Player {
 		return true;
 	}
 
+    void fast_unpack(char* rgba, const char* rgb, const int count) {
+        if (count == 0)
+            return;
+        for (int i = count; --i; rgba += 4, rgb += 3) {
+            *(uint32_t*)(void*)rgba = *(const uint32_t*)(const void*)rgb;
+        }
+        for (int j = 0; j < 3; ++j) {
+            rgba[j] = rgb[j];
+        }
+    }
+
 	bool Player::decodeOneFrame() {
 		if (this->videoFileType == VFT_Encoded && this->decodeType == DT_SOFTWARE) {
 			int readSuccess = av_read_frame(pFormatCtx, &packet);
