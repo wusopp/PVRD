@@ -27,6 +27,30 @@
     <ClCompile Include="TimeMeasurer.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="ThirdParty\NVDecoder\FrameQueue.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\NVDecoder\NvDecoder.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\NVDecoder\VideoDecoder.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\NVDecoder\VideoParser.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\NVDecoder\VideoSource.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\cuvid\src\dynlink_cuda.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\cuvid\src\dynlink_nvcuvid.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="glErrorChecker.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="yuvConverter.h">
@@ -38,8 +62,37 @@
     <ClInclude Include="TimeMeasurer.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="ThirdParty\NVDecoder\VideoDecoder.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="ThirdParty\NVDecoder\VideoParser.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="ThirdParty\NVDecoder\VideoSource.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="ThirdParty\NVDecoder\NvDecoder.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="ThirdParty\NVDecoder\FrameQueue.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="ThirdParty\cuvid\inc\cutil_inline_runtime.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
     <ClInclude Include="stb_dxt.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="NV12TORGBA.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="glErrorChecker.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <CudaCompile Include="NV12TORGBA.cu">
+      <Filter>源文件</Filter>
+    </CudaCompile>
   </ItemGroup>
 </Project>

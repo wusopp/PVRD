@@ -23,13 +23,14 @@
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>DisplayCPP</RootNamespace>
     <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
+    <CudaToolkitCustomDir>$(CUDA_PATH)</CudaToolkitCustomDir>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v140</PlatformToolset>
-    <CharacterSet>Unicode</CharacterSet>
+    <CharacterSet>NotSet</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
@@ -53,6 +54,7 @@
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
+    <Import Project="$(VCTargetsPath)\BuildCustomizations\CUDA 9.1.props" />
   </ImportGroup>
   <ImportGroup Label="Shared">
   </ImportGroup>
@@ -97,7 +99,7 @@
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>$(SolutionDir)\DisplayCPP\ThirdParty\NvCodec\Lib\Win32;$(SolutionDir)\DisplayCPP\ThirdParty\glew-1.11.0\lib\Release\Win32;$(SolutionDir)\DisplayCPP\ThirdParty\glew-1.11.0\lib\Release MX\Win32;$(SolutionDir)\DisplayCPP\ThirdParty\cuvid\lib\Win32;$(SolutionDir)\DisplayCPP\ThirdParty\d3d\Lib\x86;$(SolutionDir)\DisplayCPP\ThirdParty\sdl2-2.0.3\bin\win32;$(SolutionDir)\DisplayCPP\ThirdParty\ffmpeg\lib;$(CUDA_PATH)\lib\Win32;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>nvcuvid.lib;cuda.lib;OpenCL.lib;glew32.lib;SDL2.lib;SDL2main.lib;opengl32.lib;avcodec.lib;avdevice.lib;avfilter.lib;avformat.lib;avutil.lib;postproc.lib;swresample.lib;swscale.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>nvcuvid.lib;cuda.lib;cudadevrt.lib;cudart.lib;OpenCL.lib;glew32.lib;SDL2.lib;SDL2main.lib;opengl32.lib;avcodec.lib;avdevice.lib;avfilter.lib;avformat.lib;avutil.lib;postproc.lib;swresample.lib;swscale.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -155,18 +157,41 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="glErrorChecker.cpp" />
     <ClCompile Include="Player.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="ThirdParty\cuvid\src\dynlink_cuda.cpp" />
+    <ClCompile Include="ThirdParty\cuvid\src\dynlink_nvcuvid.cpp" />
+    <ClCompile Include="ThirdParty\NVDecoder\FrameQueue.cpp" />
+    <ClCompile Include="ThirdParty\NVDecoder\NvDecoder.cpp" />
+    <ClCompile Include="ThirdParty\NVDecoder\VideoDecoder.cpp" />
+    <ClCompile Include="ThirdParty\NVDecoder\VideoParser.cpp" />
+    <ClCompile Include="ThirdParty\NVDecoder\VideoSource.cpp" />
     <ClCompile Include="TimeMeasurer.cpp" />
     <ClCompile Include="yuvConverter.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="glErrorChecker.h" />
+    <ClInclude Include="NV12TORGBA.h" />
     <ClInclude Include="Player.h" />
-    <ClInclude Include="stb_dxt.h" />
+    <ClInclude Include="ThirdParty\cuvid\inc\cutil_inline_runtime.h" />
+    <ClInclude Include="ThirdParty\NVDecoder\FrameQueue.h" />
+    <ClInclude Include="ThirdParty\NVDecoder\NvDecoder.h" />
+    <ClInclude Include="ThirdParty\NVDecoder\VideoDecoder.h" />
+    <ClInclude Include="ThirdParty\NVDecoder\VideoParser.h" />
+    <ClInclude Include="ThirdParty\NVDecoder\VideoSource.h" />
     <ClInclude Include="TimeMeasurer.h" />
     <ClInclude Include="yuvConverter.h" />
   </ItemGroup>
+  <ItemGroup>
+    <CudaCompile Include="NV12TORGBA.cu">
+      <FileType>Document</FileType>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</ExcludedFromBuild>
+      <TargetMachinePlatform Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">32</TargetMachinePlatform>
+    </CudaCompile>
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
+    <Import Project="$(VCTargetsPath)\BuildCustomizations\CUDA 9.1.targets" />
   </ImportGroup>
 </Project>
