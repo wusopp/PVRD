@@ -42,9 +42,11 @@
 #include "VideoParser.h"
 #include "VideoDecoder.h"
 
+
 #include "cudaModuleMgr.h"
 extern "C" {
 #include "../../ffmpeg/include/libavformat/avformat.h"
+#include "./../../../DisplayCPP/NV12TORGBA.h"
 }
 
 
@@ -56,7 +58,7 @@ extern "C" {
 #include <cassert>
 
 #ifdef _DEBUG
-#define ENABLE_DEBUG_OUT    0
+#define ENABLE_DEBUG_OUT    1
 #else
 #define ENABLE_DEBUG_OUT    0
 #endif

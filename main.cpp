@@ -6,21 +6,21 @@
 #include "../NVDecoder/NvDecoder.h"
 
 void readDataFromFile(const char *fileName, unsigned char *yuvData, int frameWidth, int frameHeight) {
-    if(yuvData == NULL) {
-        return;
-    }
-    size_t size = frameWidth * frameHeight * 3 / 2;
-    FILE *pf = fopen(fileName, "rb+");
-    fread(yuvData, 1, size, pf);
-    fclose(pf);
-    return;
+	if (yuvData == NULL) {
+		return;
+	}
+	size_t size = frameWidth * frameHeight * 3 / 2;
+	FILE *pf = fopen(fileName, "rb+");
+	fread(yuvData, 1, size, pf);
+	fclose(pf);
+	return;
 }
 
 void convertYUV2RGB(unsigned char *yuvData, unsigned char *rgbData, int frameWidth, int frameHeight) {
-    if(frameWidth < 1 || frameHeight < 1 || yuvData == NULL || rgbData == NULL) {
-        return;
-    }
-    yuv420p_to_rgb24(yuvData, rgbData, frameWidth, frameHeight);
+	if (frameWidth < 1 || frameHeight < 1 || yuvData == NULL || rgbData == NULL) {
+		return;
+	}
+	yuv420p_to_rgb24(yuvData, rgbData, frameWidth, frameHeight);
 }
 
 //void ShowDecoderCapability() {
@@ -68,31 +68,30 @@ void convertYUV2RGB(unsigned char *yuvData, unsigned char *rgbData, int frameWid
 
 int main(int argv, char** args) {
 
-    int patches = 128;
-    if(argv == 1) {
-        patches = 128;
-    } else {
-        patches = atoi(args[1]);
-        if(patches == 0) {
-            std::cout << "Error: patches number not valid!" << std::endl;
-            return 0;
-        }
-    }
+	int patches = 128;
+	if (argv == 1) {
+		patches = 128;
+	} else {
+		patches = atoi(args[1]);
+		if (patches == 0) {
+			std::cout << "Error: patches number not valid!" << std::endl;
+			return 0;
+		}
+	}
 
-    int frameWidth = 3840;
-    int frameHeight = 1920;
+	int frameWidth = 1920;
+	int frameHeight = 960;
 
-    Player::Player *player = new Player::Player(frameWidth, frameHeight, patches);
+	Player::Player *player = new Player::Player(frameWidth, frameHeight, patches);
 
-    //std::string filePath = "D:\\WangZewei\\360Video\\shark.mp4";
-    std::string filePath = "D:\\WangZewei\\YUV\\shark.yuv";
+	std::string filePath = "D:\\WangZewei\\360Video\\VRTest.mp4";
+	//std::string filePath = "D:\\WangZewei\\YUV\\shark.yuv";
+	player->setupMode(PM_ERP, DM_USE_INDEX, DT_HARDWARE, VFT_Encoded);
+	player->openVideoFile(filePath);
+	player->renderLoop();
 
-    player->openVideoFile(filePath, VFT_YUV);
-    player->setupMode(PM_ERP, DM_USE_INDEX, DT_SOFTWARE);
-    player->renderLoop();
-
-    delete player;
-    return 0;
+	delete player;
+	return 0;
 }
 
 

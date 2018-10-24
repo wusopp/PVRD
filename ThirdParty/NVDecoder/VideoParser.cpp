@@ -17,108 +17,102 @@
 #include <cstring>
 #include <cassert>
 
-VideoParser::VideoParser(VideoDecoder *pVideoDecoder, FrameQueue *pFrameQueue, CUVIDEOFORMATEX *pFormat): hParser_(0)
-{
-    assert(0 != pFrameQueue);
-    oParserData_.pFrameQueue   = pFrameQueue;
-    assert(0 != pVideoDecoder);
-    oParserData_.pVideoDecoder = pVideoDecoder;
+VideoParser::VideoParser(VideoDecoder *pVideoDecoder, FrameQueue *pFrameQueue, CUVIDEOFORMATEX *pFormat) : hParser_(0) {
+	assert(0 != pFrameQueue);
+	oParserData_.pFrameQueue = pFrameQueue;
+	assert(0 != pVideoDecoder);
+	oParserData_.pVideoDecoder = pVideoDecoder;
 
-    CUVIDPARSERPARAMS oVideoParserParameters;
-    memset(&oVideoParserParameters, 0, sizeof(CUVIDPARSERPARAMS));
-    oVideoParserParameters.CodecType              = pVideoDecoder->codec();
-    oVideoParserParameters.ulMaxNumDecodeSurfaces = pVideoDecoder->maxDecodeSurfaces();
-    oVideoParserParameters.ulMaxDisplayDelay      = 1;  // this flag is needed so the parser will push frames out to the decoder as quickly as it can
-    oVideoParserParameters.pUserData              = &oParserData_;
-    oVideoParserParameters.pExtVideoInfo          = pFormat;
-    oVideoParserParameters.pfnSequenceCallback    = HandleVideoSequence;    // Called before decoding frames and/or whenever there is a format change
-    oVideoParserParameters.pfnDecodePicture       = HandlePictureDecode;    // Called when a picture is ready to be decoded (decode order)
-    oVideoParserParameters.pfnDisplayPicture      = HandlePictureDisplay;   // Called whenever a picture is ready to be displayed (display order)
-    CUresult oResult = cuvidCreateVideoParser(&hParser_, &oVideoParserParameters);
-    assert(CUDA_SUCCESS == oResult);
+	CUVIDPARSERPARAMS oVideoParserParameters;
+	memset(&oVideoParserParameters, 0, sizeof(CUVIDPARSERPARAMS));
+	oVideoParserParameters.CodecType = pVideoDecoder->codec();
+	oVideoParserParameters.ulMaxNumDecodeSurfaces = pVideoDecoder->maxDecodeSurfaces();
+	oVideoParserParameters.ulMaxDisplayDelay = 1;  // this flag is needed so the parser will push frames out to the decoder as quickly as it can
+	oVideoParserParameters.pUserData = &oParserData_;
+	oVideoParserParameters.pExtVideoInfo = pFormat;
+	oVideoParserParameters.pfnSequenceCallback = HandleVideoSequence;    // Called before decoding frames and/or whenever there is a format change
+	oVideoParserParameters.pfnDecodePicture = HandlePictureDecode;    // Called when a picture is ready to be decoded (decode order)
+	oVideoParserParameters.pfnDisplayPicture = HandlePictureDisplay;   // Called whenever a picture is ready to be displayed (display order)
+	CUresult oResult = cuvidCreateVideoParser(&hParser_, &oVideoParserParameters);
+	assert(CUDA_SUCCESS == oResult);
 }
 
-int
-CUDAAPI
-VideoParser::HandleVideoSequence(void *pUserData, CUVIDEOFORMAT *pFormat)
-{
-    VideoParserData *pParserData = reinterpret_cast<VideoParserData *>(pUserData);
+int CUDAAPI VideoParser::HandleVideoSequence(void *pUserData, CUVIDEOFORMAT *pFormat) {
+	std::cout << "HandleVideoSequence" << std::endl;
 
-    if ((pFormat->codec != cudaVideoCodec_VP9) && ((pFormat->coded_width != pParserData->pVideoDecoder->frameWidth())
-        || (pFormat->coded_height != pParserData->pVideoDecoder->frameHeight())))
-    {
-        // Only VP9 supports dynamic resolution Change.
-        return 0;
-    }
-    if ((pFormat->codec != pParserData->pVideoDecoder->codec())         // codec-type
-        || (pFormat->chroma_format != pParserData->pVideoDecoder->chromaFormat()))
-    {
-        // We don't deal with dynamic changes in video format
-        return 0;
-    }
+	VideoParserData *pParserData = reinterpret_cast<VideoParserData *>(pUserData);
 
-    return 1;
+	if ((pFormat->codec != cudaVideoCodec_VP9) && ((pFormat->coded_width != pParserData->pVideoDecoder->frameWidth())
+		|| (pFormat->coded_height != pParserData->pVideoDecoder->frameHeight()))) {
+		// Only VP9 supports dynamic resolution Change.
+		return 0;
+	}
+	if ((pFormat->codec != pParserData->pVideoDecoder->codec())         // codec-type
+		|| (pFormat->chroma_format != pParserData->pVideoDecoder->chromaFormat())) {
+		// We don't deal with dynamic changes in video format
+		return 0;
+	}
+
+	return 1;
 }
 
-int
-CUDAAPI
-VideoParser::HandlePictureDecode(void *pUserData, CUVIDPICPARAMS *pPicParams)
-{
-    VideoParserData *pParserData = reinterpret_cast<VideoParserData *>(pUserData);
+int CUDAAPI VideoParser::HandlePictureDecode(void *pUserData, CUVIDPICPARAMS *pPicParams) {
+	std::cout << "HandlePictureDecode" << std::endl;
 
-    bool bFrameAvailable = pParserData->pFrameQueue->waitUntilFrameAvailable(pPicParams->CurrPicIdx);
 
-    if (!bFrameAvailable)
-        return false;
+	VideoParserData *pParserData = reinterpret_cast<VideoParserData *>(pUserData);
 
-    if (pParserData->pVideoDecoder->decodePicture(pPicParams) != CUDA_SUCCESS)
-    {
-        return false;
-    }
+	bool bFrameAvailable = pParserData->pFrameQueue->waitUntilFrameAvailable(pPicParams->CurrPicIdx);
 
-    return true;
+	if (!bFrameAvailable)
+		return false;
+
+	if (pParserData->pVideoDecoder->decodePicture(pPicParams) != CUDA_SUCCESS) {
+		return false;
+	}
+
+	return true;
 }
 
-int
-CUDAAPI
-VideoParser::HandlePictureDisplay(void *pUserData, CUVIDPARSERDISPINFO *pPicParams)
-{
-    // std::cout << *pPicParams << std::endl;
+int CUDAAPI VideoParser::HandlePictureDisplay(void *pUserData, CUVIDPARSERDISPINFO *pPicParams) {
+	// std::cout << *pPicParams << std::endl;
 
-    VideoParserData *pParserData = reinterpret_cast<VideoParserData *>(pUserData);
+	std::cout << "HandlePictureDisplay" << std::endl;
 
-    pParserData->pFrameQueue->enqueue(pPicParams);
 
-    return 1;
+	VideoParserData *pParserData = reinterpret_cast<VideoParserData *>(pUserData);
+
+	pParserData->pFrameQueue->enqueue(pPicParams);
+
+
+	return 1;
 }
 
-std::ostream &
-operator << (std::ostream &rOutputStream, const CUVIDPARSERDISPINFO &rParserDisplayInfo)
-{
-    rOutputStream << "Picture Index: " << rParserDisplayInfo.picture_index << "\n";
-    rOutputStream << "Progressive frame: ";
+std::ostream & operator << (std::ostream &rOutputStream, const CUVIDPARSERDISPINFO &rParserDisplayInfo) {
+	rOutputStream << "Picture Index: " << rParserDisplayInfo.picture_index << "\n";
+	rOutputStream << "Progressive frame: ";
 
-    if (rParserDisplayInfo.progressive_frame)
-        rOutputStream << "true\n";
-    else
-        rOutputStream << "false\n";
+	if (rParserDisplayInfo.progressive_frame)
+		rOutputStream << "true\n";
+	else
+		rOutputStream << "false\n";
 
-    rOutputStream << "Top field first: ";
+	rOutputStream << "Top field first: ";
 
-    if (rParserDisplayInfo.top_field_first)
-        rOutputStream << "true\n";
-    else
-        rOutputStream << "false\n";
+	if (rParserDisplayInfo.top_field_first)
+		rOutputStream << "true\n";
+	else
+		rOutputStream << "false\n";
 
-    rOutputStream << "Repeat first field: ";
+	rOutputStream << "Repeat first field: ";
 
-    if (rParserDisplayInfo.repeat_first_field)
-        rOutputStream << "true\n";
-    else
-        rOutputStream << "false\n";
+	if (rParserDisplayInfo.repeat_first_field)
+		rOutputStream << "true\n";
+	else
+		rOutputStream << "false\n";
 
-    rOutputStream << "Time stamp: " << rParserDisplayInfo.timestamp << "\n";
+	rOutputStream << "Time stamp: " << rParserDisplayInfo.timestamp << "\n";
 
-    return rOutputStream;
+	return rOutputStream;
 }
 

@@ -42,6 +42,15 @@
     <ClCompile Include="ThirdParty\NVDecoder\VideoSource.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="ThirdParty\cuvid\src\dynlink_cuda.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\cuvid\src\dynlink_nvcuvid.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="glErrorChecker.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="yuvConverter.h">
@@ -68,10 +77,19 @@
     <ClInclude Include="ThirdParty\NVDecoder\FrameQueue.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="ThirdParty\cuvid\inc\cutil_inline_runtime.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="NV12TORGBA.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="glErrorChecker.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="NV12TORGBA.cu">
+    <CudaCompile Include="NV12TORGBA.cu">
       <Filter>源文件</Filter>
-    </None>
+    </CudaCompile>
   </ItemGroup>
 </Project>

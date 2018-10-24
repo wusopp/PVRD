@@ -112,7 +112,7 @@ class VideoSource
         void stop();
 
         // Has video-processing be started?
-        bool isStarted();
+        //bool isStarted();
 
         // Retrieve source dimensions (width, height) from the video
         void getSourceDimensions(unsigned int &width, unsigned int &height);
