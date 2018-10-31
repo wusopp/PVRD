@@ -90,7 +90,7 @@ int main(int argv, char** args) {
 	player->setupMode(PM_ERP, DM_USE_INDEX, DT_SOFTWARE, VFT_YUV);
 	player->openVideoFile(filePath);
 
-	player->initThread();
+	player->setupThread();
 	player->renderLoopThread();
 	//player->renderLoop();
 

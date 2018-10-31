@@ -5,7 +5,7 @@
 #define STB_DXT_IMPLEMENTATION
 #include "stb_dxt.h"
 #include "glErrorChecker.h"
-//#define glCheckError() glCheckError_(__LINE__)
+
 
 #define RENDER_YUV 0
 
@@ -65,29 +65,29 @@ void addShader(int type, const char * source, int program) {
 namespace Player {
 	Player::Player(int numberOfPatches) :
 		pWindow(NULL),
-		pContext(NULL),
+		glContext(NULL),
 		projectionMode(PM_NOT_SPECIFIED),
 		drawMode(DM_NOT_SPECIFIED),
 		timeMeasurer(new TimeMeasurer()),
 		vertexArray(NULL),
 		uvArray(NULL),
 		indexArray(NULL) {
-		this->patchNumbers = numberOfPatches;
+		this->patchNumber = numberOfPatches;
 		init();
 	}
 
 	Player::Player(int width, int height, int numberOfPatches) :
 		pWindow(NULL),
-		pContext(NULL),
+		glContext(NULL),
 		projectionMode(PM_NOT_SPECIFIED),
 		drawMode(DM_NOT_SPECIFIED),
-		patchNumbers(numberOfPatches),
+		patchNumber(numberOfPatches),
 		timeMeasurer(new TimeMeasurer()),
 		vertexArray(NULL),
 		uvArray(NULL),
 		indexArray(NULL),
-		frameWidth(width),
-		frameHeight(height) {
+		videoFrameWidth(width),
+		videoFrameHeight(height) {
 		init();
 	}
 
@@ -112,9 +112,9 @@ namespace Player {
 			SDL_DestroyWindow(pWindow);
 			pWindow = NULL;
 		}
-		if (rawBuffer != NULL) {
-			delete[] rawBuffer;
-			rawBuffer = NULL;
+		if (yuvFrameBuffer != NULL) {
+			delete[] yuvFrameBuffer;
+			yuvFrameBuffer = NULL;
 		}
 
 		if (videoFileInputStream.is_open()) {
@@ -123,14 +123,14 @@ namespace Player {
         
 
 
-        if (compressedTexture != NULL) {
-            delete[] compressedTexture;
-            compressedTexture = NULL;
+        if (compressedTextureBuffer != NULL) {
+            delete[] compressedTextureBuffer;
+            compressedTextureBuffer = NULL;
         }
 
-        if (decodedBufferRGBA != NULL) {
-            delete[] decodedBufferRGBA;
-            decodedBufferRGBA = NULL;
+        if (decodedRGBABuffer != NULL) {
+            delete[] decodedRGBABuffer;
+            decodedRGBABuffer = NULL;
         }
 
 		if (cudaRGBABuffer != NULL) {
@@ -160,8 +160,8 @@ namespace Player {
 
 		int windowPosX = 100;
 		int windowPosY = 100;
-		pWindowWidth = 1280;
-		pWindowHeight = 640;
+		windowWidth = 1280;
+		windowHeight = 640;
 
 		Uint32 windowFlags = SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE;
 		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
@@ -171,15 +171,15 @@ namespace Player {
 		SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 0);
 		SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 0);
 
-		pWindow = SDL_CreateWindow("Panoramic Video Player", windowPosX, windowPosY, pWindowWidth, pWindowHeight, windowFlags);
+		pWindow = SDL_CreateWindow("Panoramic Video Player", windowPosX, windowPosY, windowWidth, windowHeight, windowFlags);
 
 		if (pWindow == NULL) {
 			std::cout << __FUNCTION__ << "- Window could not be created! SDL Error: " << SDL_GetError() << std::endl;
 			return false;
 		}
 
-		pContext = SDL_GL_CreateContext(pWindow);
-		if (pContext == NULL) {
+		glContext = SDL_GL_CreateContext(pWindow);
+		if (glContext == NULL) {
 			std::cout << __FUNCTION__ << "- OpenGL context could not be created! SDL Error: " << SDL_GetError() << std::endl;
 			return false;
 		}
@@ -223,6 +223,7 @@ namespace Player {
 		return true;
 	}
 	bool Player::openVideoFile(const std::string &filePath) {
+		glCheckError();
 		assert(this->videoFileType != VFT_NOT_SPECIFIED && this->decodeType != DT_NOT_SPECIFIED && this->drawMode != DM_NOT_SPECIFIED);
 
 		if (videoFileType == VFT_Encoded && decodeType == DT_SOFTWARE) {
@@ -230,45 +231,45 @@ namespace Player {
 				return false;
 			}
 
-			if (avformat_open_input(&pFormatCtx, filePath.c_str(), NULL, NULL) != 0) {
+			if (avformat_open_input(&pFormatContext, filePath.c_str(), NULL, NULL) != 0) {
 				return false;
 			}
 
-			if (avformat_find_stream_info(pFormatCtx, NULL) < 0) {
+			if (avformat_find_stream_info(pFormatContext, NULL) < 0) {
 				return false;
 			}
 
-			av_dump_format(pFormatCtx, 0, filePath.c_str(), 0);
+			av_dump_format(pFormatContext, 0, filePath.c_str(), 0);
 
-			videoStream = -1;
+			videoStreamIndex = -1;
 
-			for (int i = 0; i < pFormatCtx->nb_streams; i++) {
-				if (pFormatCtx->streams[i]->codec->codec_type == AVMEDIA_TYPE_VIDEO) {
-					videoStream = i;
+			for (int i = 0; i < pFormatContext->nb_streams; i++) {
+				if (pFormatContext->streams[i]->codec->codec_type == AVMEDIA_TYPE_VIDEO) {
+					videoStreamIndex = i;
 					break;
 				}
 			}
-			if (videoStream == -1) {
+			if (videoStreamIndex == -1) {
 				return false;
 			}
 
-			pCodecCtxOrig = pFormatCtx->streams[videoStream]->codec;
+			pCodecContextOriginal = pFormatContext->streams[videoStreamIndex]->codec;
 
-			pCodec = avcodec_find_decoder(pCodecCtxOrig->codec_id);
+			pCodec = avcodec_find_decoder(pCodecContextOriginal->codec_id);
 
 			if (pCodec == NULL) {
 				fprintf(stderr, "Unsupported codec!\n");
 				return false; // Codec not found
 			}
 
-			pCodecCtx = avcodec_alloc_context3(pCodec);
-			if (avcodec_copy_context(pCodecCtx, pCodecCtxOrig) != 0) {
+			pCodecContext = avcodec_alloc_context3(pCodec);
+			if (avcodec_copy_context(pCodecContext, pCodecContextOriginal) != 0) {
 				fprintf(stderr, "Couldn't copy codec context");
 				return false; // Error copying codec context
 			}
 
 			// Open codec
-			if (avcodec_open2(pCodecCtx, pCodec, NULL) < 0) {
+			if (avcodec_open2(pCodecContext, pCodec, NULL) < 0) {
 				return false; // Could not open codec
 			}
 
@@ -283,81 +284,63 @@ namespace Player {
             
 			av_init_packet(&packet);
 
-            numBytes = avpicture_get_size(AV_PIX_FMT_RGB24, pCodecCtx->width, pCodecCtx->height);
-            decodedBufferRGB24 = (uint8_t *)av_malloc(numBytes * sizeof(uint8_t));
+            numberOfBytesPerFrame = avpicture_get_size(AV_PIX_FMT_RGB24, pCodecContext->width, pCodecContext->height);
+            decodedRGB24Buffer = (uint8_t *)av_malloc(numberOfBytesPerFrame * sizeof(uint8_t));
 
-            decodedBufferRGBA = new uint8_t[numBytes * sizeof(uint8_t) / 3 * 4];
-            if (decodedBufferRGBA == NULL) {
+            decodedRGBABuffer = new uint8_t[numberOfBytesPerFrame * sizeof(uint8_t) / 3 * 4];
+            if (decodedRGBABuffer == NULL) {
                 std::cout << "Failed to malloc for decodedBufferRGBA!" << std::endl;
                 return false;
             }
 
-            compressedTexture = new uint8_t[numBytes * sizeof(uint8_t) / 3 * 4 / 8];
-            if (compressedTexture == NULL) {
+            compressedTextureBuffer = new uint8_t[numberOfBytesPerFrame * sizeof(uint8_t) / 3 * 4 / 8];
+            if (compressedTextureBuffer == NULL) {
                 std::cout << "Failed to malloc for compressedTexture!" << std::endl;
                 return false;
             }
 
-            avpicture_fill((AVPicture *)pFrameRGB, decodedBufferRGB24, AV_PIX_FMT_RGB24, pCodecCtx->width, pCodecCtx->height);
+            avpicture_fill((AVPicture *)pFrameRGB, decodedRGB24Buffer, AV_PIX_FMT_RGB24, pCodecContext->width, pCodecContext->height);
 
-            sws_ctx = sws_getContext(pCodecCtx->width, pCodecCtx->height, pCodecCtx->pix_fmt, pCodecCtx->width, pCodecCtx->height, AV_PIX_FMT_RGB24,SWS_BILINEAR,NULL,NULL,NULL);
+            swsContext = sws_getContext(pCodecContext->width, pCodecContext->height, pCodecContext->pix_fmt, pCodecContext->width, pCodecContext->height, AV_PIX_FMT_RGB24,SWS_BILINEAR,NULL,NULL,NULL);
 
-            if (decodedBufferRGB24 == NULL) {
+            if (decodedRGB24Buffer == NULL) {
 				return false;
 			}
 
+			glCheckError();
 			return true;
 		} else if (videoFileType == VFT_Encoded && decodeType == DT_HARDWARE) {
 			this->pNVDecoder = new NvDecoder();
 
-			/*fp = fopen(filePath.c_str(), "rb+");
-
-			int bufsize = 4096;
-
-			uint8_t *buf = (uint8_t *)av_mallocz(sizeof(uint8_t)*bufsize);
-
-			AVIOContext *ioContext = NULL;
-			ioContext = avio_alloc_context(buf, bufsize, 0, this, read_data, NULL, NULL);
-			if (!ioContext) {
-			return false;
-			}
-			AVInputFormat *inputFormat = NULL;
-			if (av_probe_input_buffer(ioContext, &inputFormat, "", NULL, 0, 0) < 0) {
-			return false;
-			}
-
-			pFormatCtx = avformat_alloc_context();
-			pFormatCtx->pb = ioContext;*/
-
 			if (filePath.length() == 0) {
 				return false;
 			}
-			pFormatCtx = avformat_alloc_context();
-			if (avformat_open_input(&pFormatCtx, filePath.c_str(), NULL, NULL) < 0) {
+			pFormatContext = avformat_alloc_context();
+			if (avformat_open_input(&pFormatContext, filePath.c_str(), NULL, NULL) < 0) {
 				return false;
 			}
 
-			if (avformat_find_stream_info(pFormatCtx, NULL) < 0) {
+			if (avformat_find_stream_info(pFormatContext, NULL) < 0) {
 				return false;
 			}
 
-			av_dump_format(pFormatCtx, 0, "", 0);
+			av_dump_format(pFormatContext, 0, "", 0);
 
-			videoStream = -1;
+			videoStreamIndex = -1;
 
-			for (int i = 0; i < pFormatCtx->nb_streams; i++) {
-				if (pFormatCtx->streams[i]->codec->codec_type == AVMEDIA_TYPE_VIDEO) {
-					videoStream = i;
+			for (int i = 0; i < pFormatContext->nb_streams; i++) {
+				if (pFormatContext->streams[i]->codec->codec_type == AVMEDIA_TYPE_VIDEO) {
+					videoStreamIndex = i;
 					break;
 				}
 			}
-			if (videoStream == -1) {
+			if (videoStreamIndex == -1) {
 				return false;
 			}
 
 			pNVDecoder->parseCommandLineArguments();
 
-			if (pNVDecoder->init(pFormatCtx, false, 0, frameWidth, frameHeight) == false) {
+			if (pNVDecoder->init(pFormatContext, false, 0, videoFrameWidth, videoFrameHeight) == false) {
 				std::cout << "Failed to init nvDecoder" << std::endl;
 				return false;
 			}
@@ -366,9 +349,9 @@ namespace Player {
 		} else if (videoFileType == VFT_YUV) {
 			this->videoFileInputStream.open(filePath, std::ios::binary | std::ios::in);
 
-			assert(this->frameWidth != 0 && this->frameHeight != 0);
-			this->rawBuffer = new uint8_t[this->frameWidth*this->frameHeight * 3 / 2];
-			if (this->rawBuffer == NULL) {
+			assert(this->videoFrameWidth != 0 && this->videoFrameHeight != 0);
+			this->yuvFrameBuffer = new uint8_t[this->videoFrameWidth*this->videoFrameHeight * 3 / 2];
+			if (this->yuvFrameBuffer == NULL) {
 				return false;
 			} else {
 				return true;
@@ -382,8 +365,8 @@ namespace Player {
 	* 根据鼠标位置计算观察矩阵
 	*/
 	void Player::computeViewMatrix() {
-		int distanceX = pCurrentXposition - pPreviousXposition;
-		int distanceY = pCurrentYposition - pPreviousYposition;
+		int distanceX = currentXposition - previousXposition;
+		int distanceY = currentYposition - previousYposition;
 
 		float DRAG_FACTOR = 0.01f;
 
@@ -420,7 +403,7 @@ namespace Player {
 	}
 
 	void Player::setupProjectionMatrix() {
-		float aspect = pWindowWidth * 1.0f / pWindowHeight;
+		float aspect = windowWidth * 1.0f / windowHeight;
 		projectMatrix = glm::perspective(45.0f, aspect, 0.1f, 40.0f);
 	}
 
@@ -452,7 +435,7 @@ namespace Player {
 		glCheckError();
 
 		int radius = 10;
-		int pieces = this->patchNumbers;
+		int pieces = this->patchNumber;
 		int halfPieces = pieces / 2;
 
 		this->vertexCount = ((halfPieces + 1) * (pieces + 1));
@@ -527,8 +510,8 @@ namespace Player {
 		int uvBufferSize = this->vertexCount * 2 * sizeof(float);
 		int indexBufferSize = this->indexArraySize * sizeof(int);
 
-		glGenBuffers(1, &sceneVertBuffer);
-		glBindBuffer(GL_ARRAY_BUFFER, sceneVertBuffer);
+		glGenBuffers(1, &sceneVertexBuffer);
+		glBindBuffer(GL_ARRAY_BUFFER, sceneVertexBuffer);
 		glBufferData(GL_ARRAY_BUFFER, vertexBufferSize, this->vertexArray, GL_STATIC_DRAW);
 
 		glGenBuffers(1, &sceneUVBuffer);
@@ -550,7 +533,7 @@ namespace Player {
 	*/
 	bool Player::_setupERPCoordinatesWithoutIndex() {
 		glCheckError();
-		this->vertexCount = this->patchNumbers * this->patchNumbers * 3;
+		this->vertexCount = this->patchNumber * this->patchNumber * 3;
 
 		if (this->vertexArray) {
 			delete[] this->vertexArray;
@@ -563,8 +546,8 @@ namespace Player {
 
 
 		int radius = 10;
-		int pieces = this->patchNumbers;
-		int halfPieces = this->patchNumbers / 2;
+		int pieces = this->patchNumber;
+		int halfPieces = this->patchNumber / 2;
 		double verticalInterval = M_PI / (halfPieces);
 		double horizontalInterval = verticalInterval;
 		double latitude;
@@ -648,8 +631,8 @@ namespace Player {
 		int vertexSize = this->vertexCount * 3 * sizeof(float);
 		int uvSize = this->vertexCount * 2 * sizeof(float);
 
-		glGenBuffers(1, &sceneVertBuffer);
-		glBindBuffer(GL_ARRAY_BUFFER, sceneVertBuffer);
+		glGenBuffers(1, &sceneVertexBuffer);
+		glBindBuffer(GL_ARRAY_BUFFER, sceneVertexBuffer);
 		glBufferData(GL_ARRAY_BUFFER, vertexSize, this->vertexArray, GL_STATIC_DRAW);
 
 		glGenBuffers(1, &sceneUVBuffer);
@@ -666,7 +649,7 @@ namespace Player {
 	*/
 	bool Player::_setupCPPCoordinatesWithoutIndex() {
 		glCheckError();
-		this->vertexCount = (this->patchNumbers) * (this->patchNumbers / 2) * 6;
+		this->vertexCount = (this->patchNumber) * (this->patchNumber / 2) * 6;
 		if (this->vertexArray) {
 			delete[] this->vertexArray;
 		}
@@ -677,12 +660,12 @@ namespace Player {
 		this->uvArray = new float[this->vertexCount * 2];
 
 		int radius = 10;
-		int pieces = this->patchNumbers;
-		int halfPieces = this->patchNumbers / 2;
-		double verticalInterval = M_PI / (halfPieces);
-		double horizontalInterval = verticalInterval;
-		double latitude;
-		double longitude;
+		int pieces = this->patchNumber;
+		int halfPieces = this->patchNumber / 2;
+		float verticalInterval = M_PI / (halfPieces);
+		float horizontalInterval = verticalInterval;
+		float latitude;
+		float longitude;
 		float z[4] = { 0.0f };
 		float x[4] = { 0.0f };
 		float y[4] = { 0.0f };
@@ -761,8 +744,8 @@ namespace Player {
 		int vertexSize = this->vertexCount * 3 * sizeof(float);
 		int uvSize = this->vertexCount * 2 * sizeof(float);
 
-		glGenBuffers(1, &sceneVertBuffer);
-		glBindBuffer(GL_ARRAY_BUFFER, sceneVertBuffer);
+		glGenBuffers(1, &sceneVertexBuffer);
+		glBindBuffer(GL_ARRAY_BUFFER, sceneVertexBuffer);
 		glBufferData(GL_ARRAY_BUFFER, vertexSize, this->vertexArray, GL_STATIC_DRAW);
 
 		glGenBuffers(1, &sceneUVBuffer);
@@ -781,7 +764,7 @@ namespace Player {
 		glCheckError();
 
 		int radius = 10;
-		int pieces = this->patchNumbers;
+		int pieces = this->patchNumber;
 		int halfPieces = pieces / 2;
 
 		this->vertexCount = ((halfPieces + 1) * (pieces + 1));
@@ -804,10 +787,10 @@ namespace Player {
 		this->indexArray = new int[this->indexArraySize];
 
 
-		double verticalInterval = M_PI / halfPieces;
-		double horizontalInterval = verticalInterval;
+		float verticalInterval = M_PI / halfPieces;
+		float horizontalInterval = verticalInterval;
 
-		double latitude, longitude;
+		float latitude, longitude;
 		float xt, yt, zt;
 		float ut, vt;
 
@@ -857,8 +840,8 @@ namespace Player {
 		int uvBufferSize = this->vertexCount * 2 * sizeof(float);
 		int indexBufferSize = this->indexArraySize * sizeof(int);
 
-		glGenBuffers(1, &sceneVertBuffer);
-		glBindBuffer(GL_ARRAY_BUFFER, sceneVertBuffer);
+		glGenBuffers(1, &sceneVertexBuffer);
+		glBindBuffer(GL_ARRAY_BUFFER, sceneVertexBuffer);
 		glBufferData(GL_ARRAY_BUFFER, vertexBufferSize, this->vertexArray, GL_STATIC_DRAW);
 
 		glGenBuffers(1, &sceneUVBuffer);
@@ -879,8 +862,8 @@ namespace Player {
 	*/
 	void Player::computeCppEqualAreaUVCoordinates(float latitude, float longitude, float &s, float &t) {
 		float x, y;
-		float H = frameHeight / 2;
-		float R = frameHeight / sqrt(3 * M_PI);
+		float H = videoFrameHeight / 2;
+		float R = videoFrameHeight / sqrt(3 * M_PI);
 
 		latitude -= M_PI / 2;
 		longitude -= M_PI;
@@ -888,33 +871,12 @@ namespace Player {
 		x = sqrt(3 / M_PI) * R * longitude * (2 * cos(2 * latitude / 3) - 1);
 		y = sqrt(3 * M_PI) * R * sin(latitude / 3);
 
-		x += frameWidth / 2;
-		y += frameHeight / 2;
+		x += videoFrameWidth / 2;
+		y += videoFrameHeight / 2;
 
-		s = x / frameWidth;
-		t = y / frameHeight;
+		s = x / videoFrameWidth;
+		t = y / videoFrameHeight;
 	}
-
-
-	void Player::computeCppEqualAreaUVCoordinates(double latitude, double longitude, double &u, double &v) {
-		double x, y;
-		double H = frameHeight / 2;
-		double R = frameHeight / sqrt(3 * M_PI);
-
-		latitude -= M_PI / 2;
-		longitude -= M_PI;
-
-		x = sqrt(3 / M_PI) * R * longitude * (2 * cos(2 * latitude / 3) - 1);
-		y = sqrt(3 * M_PI) * R * sin(latitude / 3);
-
-		x += frameWidth / 2;
-		y += frameHeight / 2;
-
-		u = x / frameWidth;
-		v = y / frameHeight;
-	}
-
-    
 
 	/**
 	* 根据投影格式来调用不同的渲染方法
@@ -924,7 +886,6 @@ namespace Player {
 #if RENDER_YUV
 #else 
 			glBindTexture(GL_TEXTURE_2D, sceneTextureID);
-			glCheckError();
 #endif
 		} else if (this->decodeType == DT_HARDWARE) {
 			glBindTexture(GL_TEXTURE_2D, cudaTextureID);
@@ -934,12 +895,12 @@ namespace Player {
 		if (this->videoFileType == VFT_YUV) {
 
 			pthread_mutex_lock(&this->lock);
-			this->setupTextureData(rawBuffer);
+			this->setupTextureData(yuvFrameBuffer);
 			pthread_mutex_unlock(&this->lock);
 
 		} else if (this->videoFileType == VFT_Encoded && this->decodeType == DT_SOFTWARE) {
 			pthread_mutex_lock(&this->lock);
-            this->setupTextureData(decodedBufferRGBA);
+            this->setupTextureData(decodedRGBABuffer);
 			pthread_mutex_unlock(&this->lock);
 		} else if (this->videoFileType == VFT_Encoded && this->decodeType == DT_HARDWARE) {
 			static bool firstTime = true;
@@ -955,7 +916,8 @@ namespace Player {
 		} else {
 			return;
 		}
-		glCheckError();
+
+
 		if (this->projectionMode == PM_ERP) {
 			if (drawMode == DM_USE_INDEX) {
 				_drawFrameERPWithIndex();
@@ -979,16 +941,16 @@ namespace Player {
 	void Player::_drawFrameERPWithIndex() {
 		/*glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);*/
-		glViewport(0, 0, pWindowWidth, pWindowHeight);
+		glViewport(0, 0, windowWidth, windowHeight);
 		glDisable(GL_DEPTH_TEST);
-
+		glCheckError();
 		computeMVPMatrix();
 		glUseProgram(sceneProgramID);
 
 		glUniformMatrix4fv(sceneMVPMatrixPointer, 1, GL_FALSE, &mvpMatrix[0][0]);
 		glBindVertexArray(sceneVAO);
 
-		glBindBuffer(GL_ARRAY_BUFFER, sceneVertBuffer);
+		glBindBuffer(GL_ARRAY_BUFFER, sceneVertexBuffer);
 		glEnableVertexAttribArray(0);
 		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (const void *)0);
 
@@ -1012,7 +974,7 @@ namespace Player {
 	void Player::_drawFrameERPWithoutIndex() {
 		/*glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);*/
-		glViewport(0, 0, pWindowWidth, pWindowHeight);
+		glViewport(0, 0, windowWidth, windowHeight);
 		glDisable(GL_DEPTH_TEST);
 
 		computeMVPMatrix();
@@ -1022,7 +984,7 @@ namespace Player {
 
 		glBindVertexArray(sceneVAO);
 
-		glBindBuffer(GL_ARRAY_BUFFER, sceneVertBuffer);
+		glBindBuffer(GL_ARRAY_BUFFER, sceneVertexBuffer);
 		glEnableVertexAttribArray(0);
 		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (const void *)0);
 
@@ -1042,7 +1004,7 @@ namespace Player {
 	void Player::_drawFrameCPPWithIndex() {
 		/*glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);*/
-		glViewport(0, 0, pWindowWidth, pWindowHeight);
+		glViewport(0, 0, windowWidth, windowHeight);
 		glDisable(GL_DEPTH_TEST);
 
 		computeMVPMatrix();
@@ -1053,7 +1015,7 @@ namespace Player {
 
 		glBindVertexArray(sceneVAO);
 
-		glBindBuffer(GL_ARRAY_BUFFER, sceneVertBuffer);
+		glBindBuffer(GL_ARRAY_BUFFER, sceneVertexBuffer);
 		glEnableVertexAttribArray(0);
 		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (const void *)0);
 
@@ -1073,7 +1035,7 @@ namespace Player {
 	void Player::_drawFrameCPPWithoutIndex() {
 		/*glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);*/
-		glViewport(0, 0, pWindowWidth, pWindowHeight);
+		glViewport(0, 0, windowWidth, windowHeight);
 		glDisable(GL_DEPTH_TEST);
 
 		computeMVPMatrix();
@@ -1083,7 +1045,7 @@ namespace Player {
 
 		glBindVertexArray(sceneVAO);
 
-		glBindBuffer(GL_ARRAY_BUFFER, sceneVertBuffer);
+		glBindBuffer(GL_ARRAY_BUFFER, sceneVertexBuffer);
 		glEnableVertexAttribArray(0);
 		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (const void *)0);
 
@@ -1112,43 +1074,37 @@ namespace Player {
 	*/
 	bool Player::setupTextureData(unsigned char *textureData) {
 		static bool firstTime = true;
-		assert(frameHeight > 0 && frameWidth > 0);
+		assert(videoFrameHeight > 0 && videoFrameWidth > 0);
 		glUseProgram(sceneProgramID);
-		glCheckError();
-
 #if RENDER_YUV
-		unsigned char *yuvPlanes[3];
-		yuvPlanes[0] = textureData;
-		yuvPlanes[1] = textureData + this->frameWidth * this->frameHeight;
-		yuvPlanes[2] = textureData + this->frameWidth * this->frameHeight / 4 * 5;
+			unsigned char *yuvPlanes[3];
+			yuvPlanes[0] = textureData;
+			yuvPlanes[1] = textureData + this->videoFrameWidth * this->videoFrameHeight;
+			yuvPlanes[2] = textureData + this->videoFrameWidth * this->videoFrameHeight / 4 * 5;
 
-		for (int i = 0; i < 3; i++) {
-			int w = (i == 0 ? this->frameWidth : this->frameWidth / 2);
-			int h = (i == 0 ? this->frameHeight : this->frameHeight / 2);
+			for (int i = 0; i < 3; i++) {
+				int w = (i == 0 ? this->videoFrameWidth : this->videoFrameWidth / 2);
+				int h = (i == 0 ? this->videoFrameHeight : this->videoFrameHeight / 2);
 
-			glActiveTexture(GL_TEXTURE0 + i);
-			glBindTexture(GL_TEXTURE_2D, yuvTextures[i]);
-			if (firstTime) {
-				glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, w, h, 0, GL_RED, GL_UNSIGNED_BYTE, static_cast<const GLvoid*>(yuvPlanes[i]));
-				firstTime = true;
-				glCheckError();
-			} else {
-				glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, GL_RED, GL_UNSIGNED_BYTE, static_cast<const GLvoid*>(yuvPlanes[i]));
-				glCheckError();
+				glActiveTexture(GL_TEXTURE0 + i);
+				glBindTexture(GL_TEXTURE_2D, yuvTexturesID[i]);
+				if (firstTime) {
+					glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, w, h, 0, GL_RED, GL_UNSIGNED_BYTE, static_cast<const GLvoid*>(yuvPlanes[i]));
+					firstTime = true;
+					glCheckError();
+				} else {
+					glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, GL_RED, GL_UNSIGNED_BYTE, static_cast<const GLvoid*>(yuvPlanes[i]));
+					glCheckError();
+				}
 			}
-		}
 #else 
-		glCheckError();
-		glBindTexture(GL_TEXTURE_2D, sceneTextureID);
-		glCheckError();
+			glBindTexture(GL_TEXTURE_2D, sceneTextureID);
 
-       //glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, frameWidth, frameHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, textureData);
-        unsigned int size = ((frameWidth + 3) / 4)*((frameHeight + 3) / 4)*8;
-        glCompressedTexImage2D(GL_TEXTURE_2D, 0, GL_COMPRESSED_RGBA_S3TC_DXT1_EXT, frameWidth, frameHeight, 0, size, compressedTexture);
-		glCheckError();
+			//glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, frameWidth, frameHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, textureData);
+			unsigned int size = ((videoFrameWidth + 3) / 4)*((videoFrameHeight + 3) / 4) * 8;
+			glCompressedTexImage2D(GL_TEXTURE_2D, 0, GL_COMPRESSED_RGBA_S3TC_DXT1_EXT, videoFrameWidth, videoFrameHeight, 0, size, compressedTextureBuffer);
 #endif
-
-		glCheckError();
+		
 		return true;
 	}
 
@@ -1156,6 +1112,7 @@ namespace Player {
 	* 设置投影和绘图格式
 	*/
 	void Player::setupMode(ProjectionMode projection, DrawMode draw, DecodeType decode, VideoFileType fileType) {
+		glCheckError();
 		this->projectionMode = projection;
 		this->drawMode = draw;
 		this->decodeType = decode;
@@ -1190,14 +1147,14 @@ namespace Player {
 				break;
 			case SDL_MOUSEMOTION:
 				if (isMouseSelected) {
-					SDL_GetMouseState(&pCurrentXposition, &pCurrentYposition);
+					SDL_GetMouseState(&currentXposition, &currentYposition);
 					computeViewMatrix();
 					computeMVPMatrix();
 				}
 				break;
 			case SDL_MOUSEBUTTONDOWN:
 				isMouseSelected = true;
-				SDL_GetMouseState(&pPreviousXposition, &pPreviousYposition);
+				SDL_GetMouseState(&previousXposition, &previousYposition);
 				break;
 			case SDL_MOUSEBUTTONUP:
 				isMouseSelected = false;
@@ -1218,9 +1175,9 @@ namespace Player {
 	* 处理窗口的缩放事件，重新设置视点
 	*/
 	void Player::resizeWindow(SDL_Event& event) {
-		pWindowWidth = event.window.data1;
-		pWindowHeight = event.window.data2;
-		glViewport(0, 0, pWindowWidth, pWindowHeight);
+		windowWidth = event.window.data1;
+		windowHeight = event.window.data2;
+		glViewport(0, 0, windowWidth, windowHeight);
 		setupProjectionMatrix();
 		computeMVPMatrix();
 	}
@@ -1232,24 +1189,24 @@ namespace Player {
 	}
 
 	void Player::destroyCodec() {
-        av_free(decodedBufferRGB24);
+        av_free(decodedRGB24Buffer);
 
 		if (&pFrame != NULL) {
 			av_frame_free(&pFrame);
 		}
 
-		if (pCodecCtx != NULL) {
-			avcodec_close(pCodecCtx);
-			pCodecCtx = NULL;
+		if (pCodecContext != NULL) {
+			avcodec_close(pCodecContext);
+			pCodecContext = NULL;
 		}
 
-		if (pCodecCtxOrig != NULL) {
-			avcodec_close(pCodecCtxOrig);
-			pCodecCtxOrig = NULL;
+		if (pCodecContextOriginal != NULL) {
+			avcodec_close(pCodecContextOriginal);
+			pCodecContextOriginal = NULL;
 		}
 
-		if (&pFormatCtx != NULL) {
-			avformat_close_input(&pFormatCtx);
+		if (&pFormatContext != NULL) {
+			avformat_close_input(&pFormatContext);
 		}
 
 		if (pNVDecoder != NULL) {
@@ -1290,15 +1247,16 @@ namespace Player {
 	* 设置纹理参数
 	*/
 	bool Player::setupTexture() {
+
 		glUseProgram(sceneProgramID);
 		if (this->decodeType == DT_SOFTWARE) {
 
 #if RENDER_YUV
-			glGenTextures(3, yuvTextures);
+			glGenTextures(3, yuvTexturesID);
 			for (int i = 0; i < 3; i++) {
 				glUniform1i(glGetUniformLocation(sceneProgramID, TEXTURE_UNIFORMS[i]), i);
 				glActiveTexture(GL_TEXTURE0 + i);
-				glBindTexture(GL_TEXTURE_2D, yuvTextures[i]);
+				glBindTexture(GL_TEXTURE_2D, yuvTexturesID[i]);
 				glTexParameterf(GL_TEXTURE_2D,
 					GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 				glTexParameterf(GL_TEXTURE_2D,
@@ -1343,7 +1301,7 @@ namespace Player {
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, frameWidth, frameHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, videoFrameWidth, videoFrameHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
 
 			//glBindTexture(GL_TEXTURE_2D, 0);
 		}
@@ -1365,24 +1323,24 @@ namespace Player {
 
 	bool Player::decodeOneFrame() {
 		if (this->videoFileType == VFT_Encoded && this->decodeType == DT_SOFTWARE) {
-			int readSuccess = av_read_frame(pFormatCtx, &packet);
+			int readSuccess = av_read_frame(pFormatContext, &packet);
 			if (readSuccess < 0) {
 				allFrameRead = true;
 				return false;
 			}
 
-			if (packet.stream_index == videoStream) {
-				avcodec_decode_video2(pCodecCtx, pFrame, &frameFinished, &packet);
+			if (packet.stream_index == videoStreamIndex) {
+				avcodec_decode_video2(pCodecContext, pFrame, &frameFinished, &packet);
 				if (frameFinished) {
-                    sws_scale(sws_ctx, (uint8_t const *const *)pFrame->data,
-                        pFrame->linesize, 0, pCodecCtx->height,
+                    sws_scale(swsContext, (uint8_t const *const *)pFrame->data,
+                        pFrame->linesize, 0, pCodecContext->height,
                         pFrameRGB->data, pFrameRGB->linesize);
-                    avpicture_layout((AVPicture *)pFrameRGB, AV_PIX_FMT_RGB24, pCodecCtx->width, pCodecCtx->height, decodedBufferRGB24, numBytes);
+                    avpicture_layout((AVPicture *)pFrameRGB, AV_PIX_FMT_RGB24, pCodecContext->width, pCodecContext->height, decodedRGB24Buffer, numberOfBytesPerFrame);
 
                     
-                    fast_unpack((char *)decodedBufferRGBA, (const char *)decodedBufferRGB24, pCodecCtx->width * pCodecCtx->height);
+                    fast_unpack((char *)decodedRGBABuffer, (const char *)decodedRGB24Buffer, pCodecContext->width * pCodecContext->height);
 
-                    rygCompress(compressedTexture, decodedBufferRGBA, pCodecCtx->width, pCodecCtx->height,0);
+                    rygCompress(compressedTextureBuffer, decodedRGBABuffer, pCodecContext->width, pCodecContext->height,0);
                     
 
 					av_free_packet(&packet);
@@ -1396,18 +1354,18 @@ namespace Player {
 			}
 		} else if (this->videoFileType == VFT_Encoded && this->decodeType == DT_HARDWARE) {
 			while (true) {
-				int readSuccess = av_read_frame(pFormatCtx, &packet);
+				int readSuccess = av_read_frame(pFormatContext, &packet);
 				if (readSuccess < 0) {
 					allFrameRead = true;
 					return false;
 				}
-				if (packet.stream_index == videoStream) {
+				if (packet.stream_index == videoStreamIndex) {
 					inputPacket.payload = packet.data;
 					inputPacket.payload_size = packet.size;
 					inputPacket.flags = CUVID_PKT_TIMESTAMP;
 					cuvidParseVideoData(pNVDecoder->g_pVideoSource->oSourceData_.hVideoParser, &inputPacket);
 					bool needsCudaMalloc = true;
-					if (pNVDecoder->copyDecodedFrameToTexture(&cudaRGBABuffer, frameHeight, frameWidth, this->cudaTextureID, this->mainDeviceContext, this->mainGLRenderContext, needsCudaMalloc)) {
+					if (pNVDecoder->copyDecodedFrameToTexture(&cudaRGBABuffer, videoFrameHeight, videoFrameWidth, this->cudaTextureID, this->mainDeviceContext, this->mainGLRenderContext, needsCudaMalloc)) {
 						av_free_packet(&packet);
 						return true;
 					}
@@ -1419,8 +1377,8 @@ namespace Player {
 				return false;
 			}
 
-			static std::streampos pos = this->frameHeight * this->frameWidth * 3 / 2;
-			this->videoFileInputStream.read((char *)rawBuffer, pos);
+			static std::streampos pos = this->videoFrameHeight * this->videoFrameWidth * 3 / 2;
+			this->videoFileInputStream.read((char *)yuvFrameBuffer, pos);
 			this->videoFileInputStream.seekg(pos, std::ios_base::cur);
 			return true;
 		} else {
@@ -1471,6 +1429,8 @@ namespace Player {
 	}
 }
 
+
+// CPP 渲染相关
 namespace Player {
 	void Player::organizeVerts(std::vector<std::vector<VertexStruct> > & allVerts) {
 		if (this->vertexVector.size() > 0) {
@@ -1608,7 +1568,7 @@ namespace Player {
 			this->indexVector.clear();
 		}
 
-		int H = this->frameHeight / 2;
+		int H = this->videoFrameHeight / 2;
 
 		float SQRT_3_M_PI = sqrt(3 * M_PI);
 		float SQRT_3_DIVIDE_M_PI = sqrt(3 / M_PI);
@@ -1691,8 +1651,8 @@ namespace Player {
 		int vertexDataSize = this->vertexVector.size() * sizeof(float);
 		int uvDataSize = this->uvVector.size() * sizeof(float);
 
-		glGenBuffers(1, &sceneVertBuffer);
-		glBindBuffer(GL_ARRAY_BUFFER, sceneVertBuffer);
+		glGenBuffers(1, &sceneVertexBuffer);
+		glBindBuffer(GL_ARRAY_BUFFER, sceneVertexBuffer);
 		glBufferData(GL_ARRAY_BUFFER, vertexDataSize, &this->vertexVector[0], GL_STATIC_DRAW);
 
 		glGenBuffers(1, &sceneUVBuffer);
@@ -1705,7 +1665,7 @@ namespace Player {
 	}
 
 	void Player::_drawFrameCppEqualDistance() {
-		glViewport(0, 0, pWindowWidth, pWindowHeight);
+		glViewport(0, 0, windowWidth, windowHeight);
 		glDisable(GL_DEPTH_TEST);
 
 		computeMVPMatrix();
@@ -1717,7 +1677,7 @@ namespace Player {
 		glUniformMatrix4fv(sceneMVPMatrixPointer, 1, GL_FALSE, &mvpMatrix[0][0]);
 		glBindVertexArray(sceneVAO);
 
-		glBindBuffer(GL_ARRAY_BUFFER, sceneVertBuffer);
+		glBindBuffer(GL_ARRAY_BUFFER, sceneVertexBuffer);
 		glEnableVertexAttribArray(0);
 		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (const void *)0);
 
@@ -1732,18 +1692,19 @@ namespace Player {
 	}
 
 	void Player::computeCppEqualDistanceUVCoordinates(float x, float y, float &u, float &v) {
-		x += this->frameWidth / 2;
-		y += this->frameHeight / 2;
+		x += this->videoFrameWidth / 2;
+		y += this->videoFrameHeight / 2;
 
-		u = x / this->frameWidth;
-		v = y / this->frameHeight;
+		u = x / this->videoFrameWidth;
+		v = y / this->videoFrameHeight;
 
 		v = 1.0f - v;
 	}
 }
 
 namespace Player {
-	void Player::initThread() {
+	void Player::setupThread()
+{
 		int ret = pthread_create(&decodeThread, NULL, decodeFunc,&(*this));
 		if (ret != 0) {
 			std::cout << "Pthread_create error" << std::endl;
@@ -1769,22 +1730,22 @@ namespace Player {
 		std::cout << "decodeFunc" << std::endl;
 		Player *player = (Player *)args;
 		if (player->videoFileType == VFT_Encoded && player->decodeType == DT_SOFTWARE) {
-			while (av_read_frame(player->pFormatCtx, &player->packet) >= 0) {
-				if (player->packet.stream_index == player->videoStream) {
-					avcodec_decode_video2(player->pCodecCtx, player->pFrame, &player->frameFinished, &player->packet);
+			while (av_read_frame(player->pFormatContext, &player->packet) >= 0) {
+				if (player->packet.stream_index == player->videoStreamIndex) {
+					avcodec_decode_video2(player->pCodecContext, player->pFrame, &player->frameFinished, &player->packet);
 					if (player->frameFinished) {
-						sws_scale(player->sws_ctx, (uint8_t const *const *)player->pFrame->data,
-							player->pFrame->linesize, 0, player->pCodecCtx->height,
+						sws_scale(player->swsContext, (uint8_t const *const *)player->pFrame->data,
+							player->pFrame->linesize, 0, player->pCodecContext->height,
 							player->pFrameRGB->data, player->pFrameRGB->linesize);
 
 						sem_wait(&player->renderFinishedSemaphore);
 
 						pthread_mutex_lock(&player->lock);
-						avpicture_layout((AVPicture *)player->pFrameRGB, AV_PIX_FMT_RGB24, player->pCodecCtx->width, player->pCodecCtx->height, player->decodedBufferRGB24, player->numBytes);
+						avpicture_layout((AVPicture *)player->pFrameRGB, AV_PIX_FMT_RGB24, player->pCodecContext->width, player->pCodecContext->height, player->decodedRGB24Buffer, player->numberOfBytesPerFrame);
 						
-						fast_unpack((char *)player->decodedBufferRGBA, (const char *)player->decodedBufferRGB24, player->pCodecCtx->width * player->pCodecCtx->height);
+						fast_unpack((char *)player->decodedRGBABuffer, (const char *)player->decodedRGB24Buffer, player->pCodecContext->width * player->pCodecContext->height);
 
-						rygCompress(player->compressedTexture, player->decodedBufferRGBA, player->pCodecCtx->width, player->pCodecCtx->height, 0);
+						rygCompress(player->compressedTextureBuffer, player->decodedRGBABuffer, player->pCodecContext->width, player->pCodecContext->height, 0);
 						pthread_mutex_unlock(&player->lock);
 
 						av_free_packet(&player->packet);
@@ -1799,13 +1760,13 @@ namespace Player {
 			pthread_exit(NULL);
 		} else if (player->videoFileType == VFT_Encoded && player->decodeType == DT_HARDWARE) {
 			while (true) {
-				int readSuccess = av_read_frame(player->pFormatCtx, &player->packet);
+				int readSuccess = av_read_frame(player->pFormatContext, &player->packet);
 				if (readSuccess < 0) {
 					player->allFrameRead = true;
 					sem_post(&player->decodeAllFramesFinishedSemaphore);
 					pthread_exit(NULL);
 				}
-				if (player->packet.stream_index == player->videoStream) {
+				if (player->packet.stream_index == player->videoStreamIndex) {
 					player->inputPacket.payload = player->packet.data;
 					player->inputPacket.payload_size = player->packet.size;
 					player->inputPacket.flags = CUVID_PKT_TIMESTAMP;
@@ -1813,7 +1774,7 @@ namespace Player {
 					bool needsCudaMalloc = true;
 					sem_wait(&player->renderFinishedSemaphore);
 					pthread_mutex_lock(&player->lock);
-					if (player->pNVDecoder->copyDecodedFrameToTexture(&player->cudaRGBABuffer, player->frameHeight, player->frameWidth, player->cudaTextureID, player->mainDeviceContext, player->mainGLRenderContext, needsCudaMalloc)) {
+					if (player->pNVDecoder->copyDecodedFrameToTexture(&player->cudaRGBABuffer, player->videoFrameHeight, player->videoFrameWidth, player->cudaTextureID, player->mainDeviceContext, player->mainGLRenderContext, needsCudaMalloc)) {
 						pthread_mutex_unlock(&player->lock);
 						av_free_packet(&player->packet);
 						sem_post(&player->decodeOneFrameFinishedSemaphore);
@@ -1830,10 +1791,10 @@ namespace Player {
 					sem_post(&player->decodeAllFramesFinishedSemaphore);
 					pthread_exit(NULL);
 				}
-				static std::streampos pos = player->frameHeight * player->frameWidth * 3 / 2;
+				static std::streampos pos = player->videoFrameHeight * player->videoFrameWidth * 3 / 2;
 				sem_wait(&player->renderFinishedSemaphore);
 				pthread_mutex_lock(&player->lock);
-				player->videoFileInputStream.read((char *)player->rawBuffer, pos);
+				player->videoFileInputStream.read((char *)player->yuvFrameBuffer, pos);
 				player->videoFileInputStream.seekg(pos, std::ios_base::cur);
 				pthread_mutex_unlock(&player->lock);
 				sem_post(&player->decodeOneFrameFinishedSemaphore);

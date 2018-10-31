@@ -130,8 +130,7 @@ namespace Player {
 		void _drawFrameCPPWithoutIndex();
 
 		void computeCppEqualAreaUVCoordinates(float latitude, float longitude, float &s, float &t);
-		void computeCppEqualAreaUVCoordinates(double latitude, double longitude, double &u, double &v);
-
+		
 	private:
 		pthread_t decodeThread;
 
@@ -144,7 +143,7 @@ namespace Player {
 		friend void * decodeFunc(void *args);
 
 	public:
-		void initThread();
+		void setupThread();
 		void renderLoopThread();
 
 	private:
@@ -155,7 +154,7 @@ namespace Player {
 
 	private:
 		SDL_Window *pWindow = NULL;
-		SDL_GLContext pContext;
+		SDL_GLContext glContext;
 		TimeMeasurer *timeMeasurer = NULL;
 		ProjectionMode projectionMode = PM_NOT_SPECIFIED;
 		DrawMode drawMode = DM_NOT_SPECIFIED;
@@ -168,11 +167,11 @@ namespace Player {
 		glm::mat4 mvpMatrix;
 		GLuint sceneProgramID;
 		GLuint sceneTextureID;
-		GLuint yuvTextures[3];
+		GLuint yuvTexturesID[3];
 		GLint sceneMVPMatrixPointer;
 
 		GLuint sceneVAO;
-		GLuint sceneVertBuffer;
+		GLuint sceneVertexBuffer;
 		GLuint sceneUVBuffer;
 		GLuint sceneIndexBuffer;
 
@@ -182,17 +181,17 @@ namespace Player {
 		uint8_t *cudaRGBABuffer = NULL;
 
 	private:
-		int pPreviousXposition;
-		int pPreviousYposition;
-		int pCurrentXposition;
-		int pCurrentYposition;
-		int pWindowHeight;
-		int pWindowWidth;
-		int patchNumbers;
+		int previousXposition;
+		int previousYposition;
+		int currentXposition;
+		int currentYposition;
+		int windowHeight;
+		int windowWidth;
+		int patchNumber;
 		int vertexCount;
 		int indexArraySize;
-		int frameHeight;
-		int frameWidth;
+		int videoFrameHeight;
+		int videoFrameWidth;
 
 		float touchPointX = 0;
 		float touchPointY = 0;
@@ -206,23 +205,22 @@ namespace Player {
 		std::vector<int> indexVector;
 
 	private:
-		AVFormatContext   *pFormatCtx = NULL;
-		int               videoStream;
-		int               index;
-		AVCodecContext    *pCodecCtxOrig = NULL;
-		AVCodecContext    *pCodecCtx = NULL;
+		AVFormatContext   *pFormatContext = NULL;
+		int               videoStreamIndex;
+		AVCodecContext    *pCodecContextOriginal = NULL;
+		AVCodecContext    *pCodecContext = NULL;
 		AVCodec           *pCodec = NULL;
 		AVFrame           *pFrame = NULL;
         AVFrame           *pFrameRGB = NULL;
 		AVPacket          packet;
 		int               frameFinished;
 		bool              allFrameRead = false;
-		int               numBytes;
-        uint8_t           *decodedBufferRGB24 = NULL;
-        uint8_t           *compressedTexture = NULL;
-        uint8_t           *decodedBufferRGBA = NULL;
-		uint8_t           *rawBuffer = NULL;
-		struct SwsContext *sws_ctx = NULL;
+		int               numberOfBytesPerFrame;
+        uint8_t           *decodedRGB24Buffer = NULL;
+        uint8_t           *compressedTextureBuffer = NULL;
+        uint8_t           *decodedRGBABuffer = NULL;
+		uint8_t           *yuvFrameBuffer = NULL;
+		struct SwsContext *swsContext = NULL;
 		std::ifstream     videoFileInputStream;
 	};
 }
