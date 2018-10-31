@@ -62,6 +62,9 @@
     <ClInclude Include="TimeMeasurer.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="stb_dxt.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
     <ClInclude Include="ThirdParty\NVDecoder\VideoDecoder.h">
       <Filter>头文件</Filter>
     </ClInclude>
@@ -78,9 +81,6 @@
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="ThirdParty\cuvid\inc\cutil_inline_runtime.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="stb_dxt.h">
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="NV12TORGBA.h">

@@ -20,6 +20,8 @@
 #include <device_functions.h>
 #include <cuda_gl_interop.h>
 #include <device_launch_parameters.h>
+#include <pthread.h>
+#include <semaphore.h>
 extern "C"
 {
 #include <libavcodec\avcodec.h>
@@ -130,6 +132,20 @@ namespace Player {
 		void computeCppEqualAreaUVCoordinates(float latitude, float longitude, float &s, float &t);
 		void computeCppEqualAreaUVCoordinates(double latitude, double longitude, double &u, double &v);
 
+	private:
+		pthread_t decodeThread;
+
+		sem_t decodeOneFrameFinishedSemaphore;
+		sem_t renderFinishedSemaphore;
+		sem_t decodeAllFramesFinishedSemaphore;
+		pthread_mutex_t lock;
+
+		void destoryThread();
+		friend void * decodeFunc(void *args);
+
+	public:
+		void initThread();
+		void renderLoopThread();
 
 	private:
 		bool _setupERPCoordinatesWithIndex();

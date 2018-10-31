@@ -145,6 +145,7 @@ namespace Player {
 
 		destroyGL();
 		destroyCodec();
+		destoryThread();
 		SDL_Quit();
 	}
 
@@ -204,10 +205,6 @@ namespace Player {
 			std::cout << __FUNCTION__ << "- SetupGraphics failed." << std::endl;
 			return false;
 		}
-		//if (!setupTexture()) {
-		//	std::cout << __FUNCTION__ << "- SetupTexture failed." << std::endl;
-		//	return false;
-		//}
 
 		if (!setupCodec()) {
 			std::cout << __FUNCTION__ << "- setupCodec failed." << std::endl;
@@ -220,6 +217,9 @@ namespace Player {
 		if (!mainGLRenderContext || !mainDeviceContext) {
 			return false;
 		}
+
+		
+
 		return true;
 	}
 	bool Player::openVideoFile(const std::string &filePath) {
@@ -281,8 +281,6 @@ namespace Player {
 
             pFrameRGB = av_frame_alloc();
             
-
-
 			av_init_packet(&packet);
 
             numBytes = avpicture_get_size(AV_PIX_FMT_RGB24, pCodecCtx->width, pCodecCtx->height);
@@ -378,8 +376,6 @@ namespace Player {
 		} else {
 			return false;
 		}
-
-
 	}
 
 	/**
@@ -936,9 +932,15 @@ namespace Player {
 			std::cout << "DecodeType not specified!" << std::endl;
 		}
 		if (this->videoFileType == VFT_YUV) {
+
+			pthread_mutex_lock(&this->lock);
 			this->setupTextureData(rawBuffer);
+			pthread_mutex_unlock(&this->lock);
+
 		} else if (this->videoFileType == VFT_Encoded && this->decodeType == DT_SOFTWARE) {
+			pthread_mutex_lock(&this->lock);
             this->setupTextureData(decodedBufferRGBA);
+			pthread_mutex_unlock(&this->lock);
 		} else if (this->videoFileType == VFT_Encoded && this->decodeType == DT_HARDWARE) {
 			static bool firstTime = true;
 			if (firstTime) {
@@ -982,8 +984,6 @@ namespace Player {
 
 		computeMVPMatrix();
 		glUseProgram(sceneProgramID);
-
-
 
 		glUniformMatrix4fv(sceneMVPMatrixPointer, 1, GL_FALSE, &mvpMatrix[0][0]);
 		glBindVertexArray(sceneVAO);
@@ -1439,7 +1439,6 @@ namespace Player {
 		int frameIndex = 0;
 		timeMeasurer->Start();
 		while (!bQuit && !allFrameRead) {
-			bQuit = handleInput();
 			if (decodeOneFrame()) {
 				this->drawFrame();
 				frameIndex++;
@@ -1743,4 +1742,139 @@ namespace Player {
 	}
 }
 
+namespace Player {
+	void Player::initThread() {
+		int ret = pthread_create(&decodeThread, NULL, decodeFunc,&(*this));
+		if (ret != 0) {
+			std::cout << "Pthread_create error" << std::endl;
+		}
 
+		sem_init(&decodeOneFrameFinishedSemaphore, 0, 0);
+		sem_init(&decodeAllFramesFinishedSemaphore, 0, 0);
+		sem_init(&renderFinishedSemaphore, 0, 1);
+
+		lock = PTHREAD_MUTEX_INITIALIZER;
+	}
+
+	void Player::destoryThread() {
+		sem_destroy(&decodeOneFrameFinishedSemaphore);
+		sem_destroy(&decodeAllFramesFinishedSemaphore);
+		sem_destroy(&renderFinishedSemaphore);
+
+		pthread_mutex_destroy(&lock);
+	}
+
+
+	void *decodeFunc(void *args) {
+		std::cout << "decodeFunc" << std::endl;
+		Player *player = (Player *)args;
+		if (player->videoFileType == VFT_Encoded && player->decodeType == DT_SOFTWARE) {
+			while (av_read_frame(player->pFormatCtx, &player->packet) >= 0) {
+				if (player->packet.stream_index == player->videoStream) {
+					avcodec_decode_video2(player->pCodecCtx, player->pFrame, &player->frameFinished, &player->packet);
+					if (player->frameFinished) {
+						sws_scale(player->sws_ctx, (uint8_t const *const *)player->pFrame->data,
+							player->pFrame->linesize, 0, player->pCodecCtx->height,
+							player->pFrameRGB->data, player->pFrameRGB->linesize);
+
+						sem_wait(&player->renderFinishedSemaphore);
+
+						pthread_mutex_lock(&player->lock);
+						avpicture_layout((AVPicture *)player->pFrameRGB, AV_PIX_FMT_RGB24, player->pCodecCtx->width, player->pCodecCtx->height, player->decodedBufferRGB24, player->numBytes);
+						
+						fast_unpack((char *)player->decodedBufferRGBA, (const char *)player->decodedBufferRGB24, player->pCodecCtx->width * player->pCodecCtx->height);
+
+						rygCompress(player->compressedTexture, player->decodedBufferRGBA, player->pCodecCtx->width, player->pCodecCtx->height, 0);
+						pthread_mutex_unlock(&player->lock);
+
+						av_free_packet(&player->packet);
+
+						sem_post(&player->decodeOneFrameFinishedSemaphore);
+					}
+				}
+			} 
+			player->allFrameRead = true;
+			sem_post(&player->decodeAllFramesFinishedSemaphore);
+			std::cout << "decodeAllFramesFinished" << std::endl;
+			pthread_exit(NULL);
+		} else if (player->videoFileType == VFT_Encoded && player->decodeType == DT_HARDWARE) {
+			while (true) {
+				int readSuccess = av_read_frame(player->pFormatCtx, &player->packet);
+				if (readSuccess < 0) {
+					player->allFrameRead = true;
+					sem_post(&player->decodeAllFramesFinishedSemaphore);
+					pthread_exit(NULL);
+				}
+				if (player->packet.stream_index == player->videoStream) {
+					player->inputPacket.payload = player->packet.data;
+					player->inputPacket.payload_size = player->packet.size;
+					player->inputPacket.flags = CUVID_PKT_TIMESTAMP;
+					cuvidParseVideoData(player->pNVDecoder->g_pVideoSource->oSourceData_.hVideoParser, &player->inputPacket);
+					bool needsCudaMalloc = true;
+					sem_wait(&player->renderFinishedSemaphore);
+					pthread_mutex_lock(&player->lock);
+					if (player->pNVDecoder->copyDecodedFrameToTexture(&player->cudaRGBABuffer, player->frameHeight, player->frameWidth, player->cudaTextureID, player->mainDeviceContext, player->mainGLRenderContext, needsCudaMalloc)) {
+						pthread_mutex_unlock(&player->lock);
+						av_free_packet(&player->packet);
+						sem_post(&player->decodeOneFrameFinishedSemaphore);
+					} else {
+						pthread_mutex_unlock(&player->lock);
+						continue;
+					}
+				}
+			}
+		} else if (player->videoFileType == VFT_YUV) {
+			while (true) {
+				if (player->videoFileInputStream.peek() == EOF) {
+					player->allFrameRead = true;
+					sem_post(&player->decodeAllFramesFinishedSemaphore);
+					pthread_exit(NULL);
+				}
+				static std::streampos pos = player->frameHeight * player->frameWidth * 3 / 2;
+				sem_wait(&player->renderFinishedSemaphore);
+				pthread_mutex_lock(&player->lock);
+				player->videoFileInputStream.read((char *)player->rawBuffer, pos);
+				player->videoFileInputStream.seekg(pos, std::ios_base::cur);
+				pthread_mutex_unlock(&player->lock);
+				sem_post(&player->decodeOneFrameFinishedSemaphore);
+			}
+		}
+		return NULL;
+	}
+
+
+	void Player::renderLoopThread() {
+		bool bQuit = false;
+		int frameIndex = 0;
+		timeMeasurer->Start();
+		while (!bQuit && !this->allFrameRead) {
+			sem_wait(&(this->decodeOneFrameFinishedSemaphore));
+			this->drawFrame();
+			sem_post(&this->renderFinishedSemaphore);
+			frameIndex++;
+			bQuit = this->handleInput();
+		}
+		__int64 time = timeMeasurer->elapsedMillionSecondsSinceStart();
+		double average = 1.0 * time / frameIndex;
+
+		std::string projectionMode;
+		switch (this->projectionMode) {
+		case PM_CPP_OBSOLETE:
+			projectionMode = "Craster Parabolic Projection";
+			break;
+		case PM_CPP:
+			projectionMode = "Equal Distance Projection";
+			break;
+		case PM_ERP:
+			projectionMode = "Equirectangular Projection";
+			break;
+		default:
+			projectionMode = " ";
+			break;
+		}
+
+		std::cout << "projection mode is: " << projectionMode << std::endl;
+		std::cout << "Frame count: " << frameIndex << std::endl << "Total time: " << time << " ms." << std::endl << "Average time: " << average << " ms." << std::endl;
+		std::cout << "------------------------------" << std::endl;
+	}
+}
