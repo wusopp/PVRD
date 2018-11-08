@@ -6,47 +6,7 @@
 #include "stb_dxt.h"
 #include "glErrorChecker.h"
 
-
-#define RENDER_YUV 0
-
-const char* TEXTURE_UNIFORMS[] = { "y_tex", "u_tex", "v_tex" };
-
-static const char VERTEX_SHADER[] =
-"#version 410 core\n"
-"uniform mat4 matrix;\n"
-"layout(location = 0) in vec4 position;\n"
-"layout(location = 1) in vec2 uvCoords;\n"
-"out vec2 uvCoordsOut;\n"
-"void main() {\n"
-"	uvCoordsOut = uvCoords;\n"
-"	gl_Position = matrix * position;\n"
-"}\n";
-
-#if RENDER_YUV
-static const char FRAGMENT_SHADER[] =
-"precision mediump float;\n"
-"varying vec2 uvCoordsOut;\n"
-"uniform sampler2D y_tex;\n"
-"uniform sampler2D u_tex;\n"
-"uniform sampler2D v_tex;\n"
-"void main() {\n"
-"       float y = 1.164 * (texture2D(y_tex, uvCoordsOut).r - 0.0625);\n"
-"       float u = texture2D(u_tex, uvCoordsOut).r - 0.5;\n"
-"       float v = texture2D(v_tex, uvCoordsOut).r - 0.5;\n"
-"       gl_FragColor = vec4(y + 1.596 * v, "
-"                      y - 0.391 * u - 0.813 * v, "
-"                      y + 2.018 * u, "
-"                      1.0);\n"
-"}\n";
-#else 
-static const char FRAGMENT_SHADER[] =
-"#version 410 core\n"
-"uniform sampler2D mytexture;\n"
-"in vec2 uvCoordsOut;\n"
-"void main() {\n"
-"	gl_FragColor = texture(mytexture,uvCoordsOut);\n"
-"}\n";
-#endif
+static const char* TEXTURE_UNIFORMS[] = { "y_tex", "u_tex", "v_tex" };
 
 void addShader(int type, const char * source, int program) {
 	int shader = glCreateShader(type);
@@ -60,7 +20,6 @@ void addShader(int type, const char * source, int program) {
 	glAttachShader(program, shader);
 	glDeleteShader(shader);
 }
-
 
 namespace Player {
 	Player::Player(int numberOfPatches) :
@@ -112,16 +71,14 @@ namespace Player {
 			SDL_DestroyWindow(pWindow);
 			pWindow = NULL;
 		}
-		if (yuvFrameBuffer != NULL) {
-			delete[] yuvFrameBuffer;
-			yuvFrameBuffer = NULL;
+		if (decodedYUVBuffer != NULL) {
+			delete[] decodedYUVBuffer;
+			decodedYUVBuffer = NULL;
 		}
 
 		if (videoFileInputStream.is_open()) {
 			videoFileInputStream.close();
 		}
-        
-
 
         if (compressedTextureBuffer != NULL) {
             delete[] compressedTextureBuffer;
@@ -218,8 +175,6 @@ namespace Player {
 			return false;
 		}
 
-		
-
 		return true;
 	}
 	bool Player::openVideoFile(const std::string &filePath) {
@@ -253,18 +208,16 @@ namespace Player {
 				return false;
 			}
 
-			pCodecContextOriginal = pFormatContext->streams[videoStreamIndex]->codec;
+			//pCodecContextOriginal = pFormatContext->streams[videoStreamIndex]->codec;
 
-			pCodec = avcodec_find_decoder(pCodecContextOriginal->codec_id);
+			pCodec = avcodec_find_decoder(pFormatContext->streams[videoStreamIndex]->codec->codec_id);
 
 			if (pCodec == NULL) {
-				fprintf(stderr, "Unsupported codec!\n");
 				return false; // Codec not found
 			}
 
 			pCodecContext = avcodec_alloc_context3(pCodec);
 			if (avcodec_copy_context(pCodecContext, pCodecContextOriginal) != 0) {
-				fprintf(stderr, "Couldn't copy codec context");
 				return false; // Error copying codec context
 			}
 
@@ -280,34 +233,18 @@ namespace Player {
 				return false;
 			}
 
-            pFrameRGB = av_frame_alloc();
-            
 			av_init_packet(&packet);
 
-            numberOfBytesPerFrame = avpicture_get_size(AV_PIX_FMT_RGB24, pCodecContext->width, pCodecContext->height);
-            decodedRGB24Buffer = (uint8_t *)av_malloc(numberOfBytesPerFrame * sizeof(uint8_t));
-
-            decodedRGBABuffer = new uint8_t[numberOfBytesPerFrame * sizeof(uint8_t) / 3 * 4];
-            if (decodedRGBABuffer == NULL) {
-                std::cout << "Failed to malloc for decodedBufferRGBA!" << std::endl;
+            numberOfBytesPerFrame = avpicture_get_size(AV_PIX_FMT_YUV420P, pCodecContext->width, pCodecContext->height);
+            
+            decodedYUVBuffer = (uint8_t *)av_malloc(numberOfBytesPerFrame*sizeof(uint8_t));
+            if (decodedYUVBuffer == NULL) {
+                std::cout << "Failed to malloc for decodedYUVBuffer" << std::endl;
                 return false;
             }
 
-            compressedTextureBuffer = new uint8_t[numberOfBytesPerFrame * sizeof(uint8_t) / 3 * 4 / 8];
-            if (compressedTextureBuffer == NULL) {
-                std::cout << "Failed to malloc for compressedTexture!" << std::endl;
-                return false;
-            }
+            avpicture_fill((AVPicture *)pFrame, decodedYUVBuffer, AV_PIX_FMT_YUV420P, pCodecContext->width, pCodecContext->height);
 
-            avpicture_fill((AVPicture *)pFrameRGB, decodedRGB24Buffer, AV_PIX_FMT_RGB24, pCodecContext->width, pCodecContext->height);
-
-            swsContext = sws_getContext(pCodecContext->width, pCodecContext->height, pCodecContext->pix_fmt, pCodecContext->width, pCodecContext->height, AV_PIX_FMT_RGB24,SWS_BILINEAR,NULL,NULL,NULL);
-
-            if (decodedRGB24Buffer == NULL) {
-				return false;
-			}
-
-			glCheckError();
 			return true;
 		} else if (videoFileType == VFT_Encoded && decodeType == DT_HARDWARE) {
 			this->pNVDecoder = new NvDecoder();
@@ -350,8 +287,8 @@ namespace Player {
 			this->videoFileInputStream.open(filePath, std::ios::binary | std::ios::in);
 
 			assert(this->videoFrameWidth != 0 && this->videoFrameHeight != 0);
-			this->yuvFrameBuffer = new uint8_t[this->videoFrameWidth*this->videoFrameHeight * 3 / 2];
-			if (this->yuvFrameBuffer == NULL) {
+			this->decodedYUVBuffer = new uint8_t[this->videoFrameWidth*this->videoFrameHeight * 3 / 2];
+			if (this->decodedYUVBuffer == NULL) {
 				return false;
 			} else {
 				return true;
@@ -427,7 +364,7 @@ namespace Player {
 		} else if (this->projectionMode == PM_CPP) {
 			setupCppEqualDistanceCoordinates();
 			result = true;
-		}
+        }
 		return result;
 	}
 
@@ -883,10 +820,9 @@ namespace Player {
 	*/
 	void Player::drawFrame() {
 		if (this->decodeType == DT_SOFTWARE) {
-#if RENDER_YUV
-#else 
-			glBindTexture(GL_TEXTURE_2D, sceneTextureID);
-#endif
+            if (this->renderYUV == false) {
+                glBindTexture(GL_TEXTURE_2D, sceneTextureID);
+            }
 		} else if (this->decodeType == DT_HARDWARE) {
 			glBindTexture(GL_TEXTURE_2D, cudaTextureID);
 		} else if (this->decodeType == DT_NOT_SPECIFIED) {
@@ -895,7 +831,7 @@ namespace Player {
 		if (this->videoFileType == VFT_YUV) {
 
 			pthread_mutex_lock(&this->lock);
-			this->setupTextureData(yuvFrameBuffer);
+			this->setupTextureData(decodedYUVBuffer);
 			pthread_mutex_unlock(&this->lock);
 
 		} else if (this->videoFileType == VFT_Encoded && this->decodeType == DT_SOFTWARE) {
@@ -916,7 +852,6 @@ namespace Player {
 		} else {
 			return;
 		}
-
 
 		if (this->projectionMode == PM_ERP) {
 			if (drawMode == DM_USE_INDEX) {
@@ -1076,35 +1011,35 @@ namespace Player {
 		static bool firstTime = true;
 		assert(videoFrameHeight > 0 && videoFrameWidth > 0);
 		glUseProgram(sceneProgramID);
-#if RENDER_YUV
-			unsigned char *yuvPlanes[3];
-			yuvPlanes[0] = textureData;
-			yuvPlanes[1] = textureData + this->videoFrameWidth * this->videoFrameHeight;
-			yuvPlanes[2] = textureData + this->videoFrameWidth * this->videoFrameHeight / 4 * 5;
 
-			for (int i = 0; i < 3; i++) {
-				int w = (i == 0 ? this->videoFrameWidth : this->videoFrameWidth / 2);
-				int h = (i == 0 ? this->videoFrameHeight : this->videoFrameHeight / 2);
+        if (this->renderYUV) {
+            unsigned char *yuvPlanes[3];
+            yuvPlanes[0] = textureData;
+            yuvPlanes[1] = textureData + this->videoFrameWidth * this->videoFrameHeight;
+            yuvPlanes[2] = textureData + this->videoFrameWidth * this->videoFrameHeight / 4 * 5;
 
-				glActiveTexture(GL_TEXTURE0 + i);
-				glBindTexture(GL_TEXTURE_2D, yuvTexturesID[i]);
-				if (firstTime) {
-					glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, w, h, 0, GL_RED, GL_UNSIGNED_BYTE, static_cast<const GLvoid*>(yuvPlanes[i]));
-					firstTime = true;
-					glCheckError();
-				} else {
-					glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, GL_RED, GL_UNSIGNED_BYTE, static_cast<const GLvoid*>(yuvPlanes[i]));
-					glCheckError();
-				}
-			}
-#else 
-			glBindTexture(GL_TEXTURE_2D, sceneTextureID);
+            for (int i = 0; i < 3; i++) {
+                int w = (i == 0 ? this->videoFrameWidth : this->videoFrameWidth / 2);
+                int h = (i == 0 ? this->videoFrameHeight : this->videoFrameHeight / 2);
 
-			//glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, frameWidth, frameHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, textureData);
-			unsigned int size = ((videoFrameWidth + 3) / 4)*((videoFrameHeight + 3) / 4) * 8;
-			glCompressedTexImage2D(GL_TEXTURE_2D, 0, GL_COMPRESSED_RGBA_S3TC_DXT1_EXT, videoFrameWidth, videoFrameHeight, 0, size, compressedTextureBuffer);
-#endif
-		
+                glActiveTexture(GL_TEXTURE0 + i);
+                glBindTexture(GL_TEXTURE_2D, yuvTexturesID[i]);
+                if (firstTime) {
+                    glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, w, h, 0, GL_RED, GL_UNSIGNED_BYTE, static_cast<const GLvoid*>(yuvPlanes[i]));
+                    firstTime = true;
+                    glCheckError();
+                } else {
+                    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, GL_RED, GL_UNSIGNED_BYTE, static_cast<const GLvoid*>(yuvPlanes[i]));
+                    glCheckError();
+                }
+            }
+        } else {
+            glBindTexture(GL_TEXTURE_2D, sceneTextureID);
+
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, videoFrameWidth, videoFrameHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, textureData);
+            /*unsigned int size = ((videoFrameWidth + 3) / 4)*((videoFrameHeight + 3) / 4) * 8;
+            glCompressedTexImage2D(GL_TEXTURE_2D, 0, GL_COMPRESSED_RGBA_S3TC_DXT1_EXT, videoFrameWidth, videoFrameHeight, 0, size, compressedTextureBuffer);*/
+        }
 		return true;
 	}
 
@@ -1189,7 +1124,11 @@ namespace Player {
 	}
 
 	void Player::destroyCodec() {
-        av_free(decodedRGB24Buffer);
+        if (decodedRGB24Buffer != NULL) {
+            av_free(decodedRGB24Buffer);
+            decodedRGB24Buffer = NULL;
+        }
+        
 
 		if (&pFrame != NULL) {
 			av_frame_free(&pFrame);
@@ -1213,6 +1152,11 @@ namespace Player {
 			pNVDecoder->cleanup(true);
 			pNVDecoder = NULL;
 		}
+
+        if (decodedYUVBuffer != NULL) {
+            av_free(decodedYUVBuffer);
+            decodedYUVBuffer = NULL;
+        }
 	}
 
 	/**
@@ -1224,6 +1168,46 @@ namespace Player {
 		if (!sceneProgramID) {
 			return false;
 		}
+
+        char VERTEX_SHADER[] =
+            "#version 410 core\n"
+            "uniform mat4 matrix;\n"
+            "layout(location = 0) in vec4 position;\n"
+            "layout(location = 1) in vec2 uvCoords;\n"
+            "out vec2 uvCoordsOut;\n"
+            "void main() {\n"
+            "	uvCoordsOut = uvCoords;\n"
+            "	gl_Position = matrix * position;\n"
+            "}\n";
+
+        char *FRAGMENT_SHADER = NULL;
+
+        if (this->renderYUV == true) {
+            FRAGMENT_SHADER =
+                "precision mediump float;\n"
+                "varying vec2 uvCoordsOut;\n"
+                "uniform sampler2D y_tex;\n"
+                "uniform sampler2D u_tex;\n"
+                "uniform sampler2D v_tex;\n"
+                "void main() {\n"
+                "       float y = 1.164 * (texture2D(y_tex, uvCoordsOut).r - 0.0625);\n"
+                "       float u = texture2D(u_tex, uvCoordsOut).r - 0.5;\n"
+                "       float v = texture2D(v_tex, uvCoordsOut).r - 0.5;\n"
+                "       gl_FragColor = vec4(y + 1.596 * v, "
+                "                      y - 0.391 * u - 0.813 * v, "
+                "                      y + 2.018 * u, "
+                "                      1.0);\n"
+                "}\n";
+        } else {
+            FRAGMENT_SHADER =
+                "#version 410 core\n"
+                "uniform sampler2D mytexture;\n"
+                "in vec2 uvCoordsOut;\n"
+                "void main() {\n"
+                "	gl_FragColor = texture(mytexture,uvCoordsOut);\n"
+                "}\n";
+        }
+        
 		addShader(GL_VERTEX_SHADER, VERTEX_SHADER, sceneProgramID);
 		glCheckError();
 		addShader(GL_FRAGMENT_SHADER, FRAGMENT_SHADER, sceneProgramID);
@@ -1251,34 +1235,35 @@ namespace Player {
 		glUseProgram(sceneProgramID);
 		if (this->decodeType == DT_SOFTWARE) {
 
-#if RENDER_YUV
-			glGenTextures(3, yuvTexturesID);
-			for (int i = 0; i < 3; i++) {
-				glUniform1i(glGetUniformLocation(sceneProgramID, TEXTURE_UNIFORMS[i]), i);
-				glActiveTexture(GL_TEXTURE0 + i);
-				glBindTexture(GL_TEXTURE_2D, yuvTexturesID[i]);
-				glTexParameterf(GL_TEXTURE_2D,
-					GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-				glTexParameterf(GL_TEXTURE_2D,
-					GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-				glTexParameterf(GL_TEXTURE_2D,
-					GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-				glTexParameterf(GL_TEXTURE_2D,
-					GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-			} 
-#else 
-			glGenTextures(1, &sceneTextureID);
-			glUniform1i(glGetUniformLocation(sceneProgramID, "mytexture"), 0);
-			glBindTexture(GL_TEXTURE_2D, sceneTextureID);
-			glTexParameterf(GL_TEXTURE_2D,
-				GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-			glTexParameterf(GL_TEXTURE_2D,
-				GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-			glTexParameterf(GL_TEXTURE_2D,
-				GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-			glTexParameterf(GL_TEXTURE_2D,
-				GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-#endif
+            if (this->renderYUV) {
+                glGenTextures(3, yuvTexturesID);
+                for (int i = 0; i < 3; i++) {
+                    glUniform1i(glGetUniformLocation(sceneProgramID, TEXTURE_UNIFORMS[i]), i);
+                    glActiveTexture(GL_TEXTURE0 + i);
+                    glBindTexture(GL_TEXTURE_2D, yuvTexturesID[i]);
+                    glTexParameterf(GL_TEXTURE_2D,
+                        GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+                    glTexParameterf(GL_TEXTURE_2D,
+                        GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+                    glTexParameterf(GL_TEXTURE_2D,
+                        GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+                    glTexParameterf(GL_TEXTURE_2D,
+                        GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+                }
+            
+            } else {
+                glGenTextures(1, &sceneTextureID);
+                glUniform1i(glGetUniformLocation(sceneProgramID, "mytexture"), 0);
+                glBindTexture(GL_TEXTURE_2D, sceneTextureID);
+                glTexParameterf(GL_TEXTURE_2D,
+                    GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+                glTexParameterf(GL_TEXTURE_2D,
+                    GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+                glTexParameterf(GL_TEXTURE_2D,
+                    GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+                glTexParameterf(GL_TEXTURE_2D,
+                    GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+            }
 		} else if (this->decodeType == DT_HARDWARE) {
 			cudaDeviceProp prop;
 			int dev;
@@ -1378,7 +1363,7 @@ namespace Player {
 			}
 
 			static std::streampos pos = this->videoFrameHeight * this->videoFrameWidth * 3 / 2;
-			this->videoFileInputStream.read((char *)yuvFrameBuffer, pos);
+			this->videoFileInputStream.read((char *)decodedYUVBuffer, pos);
 			this->videoFileInputStream.seekg(pos, std::ios_base::cur);
 			return true;
 		} else {
@@ -1734,19 +1719,11 @@ namespace Player {
 				if (player->packet.stream_index == player->videoStreamIndex) {
 					avcodec_decode_video2(player->pCodecContext, player->pFrame, &player->frameFinished, &player->packet);
 					if (player->frameFinished) {
-						sws_scale(player->swsContext, (uint8_t const *const *)player->pFrame->data,
-							player->pFrame->linesize, 0, player->pCodecContext->height,
-							player->pFrameRGB->data, player->pFrameRGB->linesize);
-
+						
 						sem_wait(&player->renderFinishedSemaphore);
 
 						pthread_mutex_lock(&player->lock);
-						avpicture_layout((AVPicture *)player->pFrameRGB, AV_PIX_FMT_RGB24, player->pCodecContext->width, player->pCodecContext->height, player->decodedRGB24Buffer, player->numberOfBytesPerFrame);
-						
-						fast_unpack((char *)player->decodedRGBABuffer, (const char *)player->decodedRGB24Buffer, player->pCodecContext->width * player->pCodecContext->height);
-
-						rygCompress(player->compressedTextureBuffer, player->decodedRGBABuffer, player->pCodecContext->width, player->pCodecContext->height, 0);
-						pthread_mutex_unlock(&player->lock);
+						avpicture_layout((AVPicture *)player->pFrame, AV_PIX_FMT_YUV420P, player->pCodecContext->width, player->pCodecContext->height, player->decodedYUVBuffer, player->numberOfBytesPerFrame);
 
 						av_free_packet(&player->packet);
 
@@ -1794,7 +1771,7 @@ namespace Player {
 				static std::streampos pos = player->videoFrameHeight * player->videoFrameWidth * 3 / 2;
 				sem_wait(&player->renderFinishedSemaphore);
 				pthread_mutex_lock(&player->lock);
-				player->videoFileInputStream.read((char *)player->yuvFrameBuffer, pos);
+				player->videoFileInputStream.read((char *)player->decodedYUVBuffer, pos);
 				player->videoFileInputStream.seekg(pos, std::ios_base::cur);
 				pthread_mutex_unlock(&player->lock);
 				sem_post(&player->decodeOneFrameFinishedSemaphore);

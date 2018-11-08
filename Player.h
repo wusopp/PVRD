@@ -93,6 +93,10 @@ namespace Player {
 		// 设置投影和绘制格式, 必须在renderLoop之前进行
 		void setupMode(ProjectionMode projection, DrawMode draw, DecodeType decode, VideoFileType fileType);
 
+        inline void setRenderYUV(bool will) {
+            this->renderYUV = will;
+        }
+
 	public:
 		HGLRC mainGLRenderContext;
 		HDC mainDeviceContext;
@@ -114,6 +118,7 @@ namespace Player {
 		void computeMVPMatrix();
 		void computeViewMatrix();
 		bool decodeOneFrame();
+
 
 	private:
 		bool setupCppEqualDistanceCoordinates();
@@ -219,8 +224,9 @@ namespace Player {
         uint8_t           *decodedRGB24Buffer = NULL;
         uint8_t           *compressedTextureBuffer = NULL;
         uint8_t           *decodedRGBABuffer = NULL;
-		uint8_t           *yuvFrameBuffer = NULL;
+		uint8_t           *decodedYUVBuffer = NULL;
 		struct SwsContext *swsContext = NULL;
 		std::ifstream     videoFileInputStream;
+        bool              renderYUV = true;
 	};
 }

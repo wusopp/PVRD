@@ -398,7 +398,7 @@ bool NvDecoder::copyDecodedFrameToTexture(unsigned char** ppImgData, int height,
 			 NV12TORGBA(unsigned char *pYdata, unsigned char *pUVdata, int stepY, int stepUV,
 			 unsigned char *pImgData, int width, int height, int channels)
 			 */
-			NV12TORGBA(textureDataY, textureDataUV, width, width, pImgData, width, height, 4);
+			//NV12TORGBA(textureDataY, textureDataUV, width, width, pImgData, width, height, 4);
 			err = cudaMemcpyToArray(cuArray, 0, 0, pImgData, imgSize, cudaMemcpyDeviceToDevice); //GL_RED
 			if (err != cudaSuccess) {
 				std::cout << "--- cudaMemcpyToArray error!: " << err << std::endl;

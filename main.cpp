@@ -94,7 +94,6 @@ int main(int argv, char** args) {
 	player->renderLoopThread();
 	//player->renderLoop();
 
-	pthread_exit(NULL);
 	delete player;
 	return 0;
 }
