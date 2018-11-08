@@ -187,7 +187,7 @@
   <ItemGroup>
     <CudaCompile Include="NV12TORGBA.cu">
       <FileType>Document</FileType>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <TargetMachinePlatform Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">32</TargetMachinePlatform>
     </CudaCompile>
   </ItemGroup>
