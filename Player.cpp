@@ -1292,8 +1292,6 @@ namespace Player {
                 "	gl_Position = matrix * position;\n"
                 "}\n";
 
-            char *FRAGMENT_SHADER = NULL;
-
             if (this->renderYUV == true) {
                 FRAGMENT_SHADER =
                     "precision mediump float;\n"
@@ -1917,11 +1915,11 @@ namespace Player {
 		int frameIndex = 0;
 		timeMeasurer->Start();
 		while (!bQuit && !this->allFrameRead) {
+            bQuit = this->handleInput();
 			sem_wait(&(this->decodeOneFrameFinishedSemaphore));
 			this->drawFrame();
 			sem_post(&this->renderFinishedSemaphore);
 			frameIndex++;
-			bQuit = this->handleInput();
 		}
 		__int64 time = timeMeasurer->elapsedMillionSecondsSinceStart();
 		double average = 1.0 * time / frameIndex;
