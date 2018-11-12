@@ -159,7 +159,7 @@ namespace Player {
 		pthread_mutex_t lock;
 
 		void destoryThread();
-		friend void * decodeFunc(void *args);
+		static void * decodeFunc(void *args);
 
 	public:
 		void setupThread();

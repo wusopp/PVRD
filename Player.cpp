@@ -1841,7 +1841,7 @@ namespace Player {
 	}
 
 
-	void *decodeFunc(void *args) {
+	void * Player::decodeFunc(void *args) {
 		std::cout << "decodeFunc" << std::endl;
 		Player *player = (Player *)args;
 		if (player->videoFileType == VFT_Encoded && player->decodeType == DT_SOFTWARE) {
