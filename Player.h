@@ -136,19 +136,19 @@ namespace Player {
 
 	private:
 		bool setupCppEqualDistanceCoordinates();
-		void _drawFrameCppEqualDistance();
+		void drawFrameCppEqualDistance();
 
 		void computeCppEqualDistanceUVCoordinates(float x, float y, float &u, float &v);
 		void organizeVerts(std::vector<std::vector<VertexStruct>> &allVerts);
 
 	private:
 
-		void _drawFrameERPWithoutIndex();
-		void _drawFrameERPWithIndex();
-		void _drawFrameCPPWithIndex();
-		void _drawFrameCPPWithoutIndex();
+		void drawFrameERPWithoutIndex();
+		void drawFrameERPWithIndex();
+		void drawFrameCPPWithIndex_Obsolete();
+		void drawFrameCPPWithoutIndex_Obsolete();
 
-		void computeCppEqualAreaUVCoordinates(float latitude, float longitude, float &s, float &t);
+		void computeCppUVCoordinates_Obsolete(float latitude, float longitude, float &s, float &t);
 		
 	private:
 		pthread_t decodeThread;
@@ -166,10 +166,10 @@ namespace Player {
 		void renderLoopThread();
 
 	private:
-		bool _setupERPCoordinatesWithIndex();
-		bool _setupERPCoordinatesWithoutIndex();
-		bool _setupCPPCoordinatesWithoutIndex();
-		bool _setupCPPCoordinatesWithIndex();
+		bool setupERPCoordinatesWithIndex();
+		bool setupERPCoordinatesWithoutIndex();
+		bool setupCPPCoordinatesWithoutIndex_Obsolete();
+		bool setupCPPCoordinatesWithIndex_Obsolete();
 
 	private:
 		SDL_Window *pWindow = NULL;

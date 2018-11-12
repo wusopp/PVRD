@@ -347,15 +347,15 @@ namespace Player {
 		bool result;
 		if (this->projectionMode == PM_CPP_OBSOLETE) {
 			if (this->drawMode == DM_USE_INDEX) {
-				result = _setupCPPCoordinatesWithIndex();
+				result = setupCPPCoordinatesWithIndex_Obsolete();
 			} else {
-				result = _setupCPPCoordinatesWithoutIndex();
+				result = setupCPPCoordinatesWithoutIndex_Obsolete();
 			}
 		} else if (this->projectionMode == PM_ERP) {
 			if (this->drawMode == DM_USE_INDEX) {
-				result = _setupERPCoordinatesWithIndex();
+				result = setupERPCoordinatesWithIndex();
 			} else {
-				result = _setupERPCoordinatesWithoutIndex();
+				result = setupERPCoordinatesWithoutIndex();
 			}
 		} else if (this->projectionMode == PM_CPP) {
 			setupCppEqualDistanceCoordinates();
@@ -427,7 +427,7 @@ namespace Player {
     }
 
 
-	bool Player::_setupERPCoordinatesWithIndex() {
+	bool Player::setupERPCoordinatesWithIndex() {
 		glCheckError();
 
 		int radius = 10;
@@ -527,7 +527,7 @@ namespace Player {
 	/**
 	* 设置绘制ERP格式视频的球体模型的坐标，不使用索引
 	*/
-	bool Player::_setupERPCoordinatesWithoutIndex() {
+	bool Player::setupERPCoordinatesWithoutIndex() {
 		glCheckError();
 		this->vertexCount = this->patchNumber * this->patchNumber * 3;
 
@@ -643,7 +643,7 @@ namespace Player {
 	/**
 	* 设置绘制CPP格式视频的球体模型的坐标，不使用索引
 	*/
-	bool Player::_setupCPPCoordinatesWithoutIndex() {
+	bool Player::setupCPPCoordinatesWithoutIndex_Obsolete() {
 		glCheckError();
 		this->vertexCount = (this->patchNumber) * (this->patchNumber / 2) * 6;
 		if (this->vertexArray) {
@@ -677,23 +677,23 @@ namespace Player {
 				z[0] = (float)(radius*sin(latitude)*cos(longitude));
 				x[0] = (float)(radius*sin(latitude)*sin(longitude));
 				y[0] = (float)(radius*cos(latitude));
-				computeCppEqualAreaUVCoordinates(latitude, longitude, u[0], v[0]);
+				computeCppUVCoordinates_Obsolete(latitude, longitude, u[0], v[0]);
 
 				z[1] = (float)(radius*sin(latitude + verticalInterval)*cos(longitude));
 				x[1] = (float)(radius*sin(latitude + verticalInterval)*sin(longitude));
 				y[1] = (float)(radius*cos(latitude + verticalInterval));
-				computeCppEqualAreaUVCoordinates(latitude + verticalInterval, longitude, u[1], v[1]);
+				computeCppUVCoordinates_Obsolete(latitude + verticalInterval, longitude, u[1], v[1]);
 
 				z[2] = (float)(radius*sin(latitude + verticalInterval)*cos(longitude + horizontalInterval));
 				x[2] = (float)(radius *sin(latitude + verticalInterval)*sin(longitude + horizontalInterval));
 				y[2] = (float)(radius*cos(latitude + verticalInterval));
-				computeCppEqualAreaUVCoordinates(latitude + verticalInterval, longitude + horizontalInterval, u[2], v[2]);
+				computeCppUVCoordinates_Obsolete(latitude + verticalInterval, longitude + horizontalInterval, u[2], v[2]);
 
 
 				z[3] = (float)(radius*sin(latitude)*cos(longitude + horizontalInterval));
 				x[3] = (float)(radius*sin(latitude)*sin(longitude + horizontalInterval));
 				y[3] = (float)(radius*cos(latitude));
-				computeCppEqualAreaUVCoordinates(latitude, longitude + horizontalInterval, u[3], v[3]);
+				computeCppUVCoordinates_Obsolete(latitude, longitude + horizontalInterval, u[3], v[3]);
 
 
 				this->vertexArray[m++] = x[0];
@@ -756,7 +756,7 @@ namespace Player {
 	/**
 	* 设置绘制CPP格式视频的球体模型的坐标，使用索引
 	*/
-	bool Player::_setupCPPCoordinatesWithIndex() {
+	bool Player::setupCPPCoordinatesWithIndex_Obsolete() {
 		glCheckError();
 
 		int radius = 10;
@@ -800,7 +800,7 @@ namespace Player {
 				xt = (float)(radius*sin(latitude)*sin(longitude));
 				yt = (float)(radius*cos(latitude));
 
-				computeCppEqualAreaUVCoordinates(latitude, longitude, ut, vt);
+				computeCppUVCoordinates_Obsolete(latitude, longitude, ut, vt);
 				this->vertexArray[m++] = xt;
 				this->vertexArray[m++] = yt;
 				this->vertexArray[m++] = zt;
@@ -856,7 +856,7 @@ namespace Player {
 	/**
 	* 根据球体上点的经纬度，计算对应的纹理坐标
 	*/
-	void Player::computeCppEqualAreaUVCoordinates(float latitude, float longitude, float &s, float &t) {
+	void Player::computeCppUVCoordinates_Obsolete(float latitude, float longitude, float &s, float &t) {
 		float x, y;
 		float H = videoFrameHeight / 2;
 		float R = videoFrameHeight / sqrt(3 * M_PI);
@@ -914,19 +914,19 @@ namespace Player {
 
 		if (this->projectionMode == PM_ERP) {
 			if (drawMode == DM_USE_INDEX) {
-				_drawFrameERPWithIndex();
+				drawFrameERPWithIndex();
 			} else {
-				_drawFrameERPWithoutIndex();
+				drawFrameERPWithoutIndex();
 			}
 
 		} else if (this->projectionMode == PM_CPP_OBSOLETE) {
 			if (drawMode == DM_USE_INDEX) {
-				_drawFrameCPPWithIndex();
+				drawFrameCPPWithIndex_Obsolete();
 			} else {
-				_drawFrameCPPWithoutIndex();
+				drawFrameCPPWithoutIndex_Obsolete();
 			}
 		} else if (this->projectionMode == PM_CPP) {
-			_drawFrameCppEqualDistance();
+			drawFrameCppEqualDistance();
         } else if (this->projectionMode == PM_CUBEMAP) {
             drawFrameCubeMap();
         }
@@ -948,7 +948,7 @@ namespace Player {
         SDL_GL_SwapWindow(pWindow);
     }
 
-	void Player::_drawFrameERPWithIndex() {
+	void Player::drawFrameERPWithIndex() {
 		/*glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);*/
 		glViewport(0, 0, windowWidth, windowHeight);
@@ -981,7 +981,7 @@ namespace Player {
 	/**
 	* 绘制投影格式为ERP的视频帧
 	*/
-	void Player::_drawFrameERPWithoutIndex() {
+	void Player::drawFrameERPWithoutIndex() {
 		/*glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);*/
 		glViewport(0, 0, windowWidth, windowHeight);
@@ -1011,7 +1011,7 @@ namespace Player {
 	/**
 	* 绘制投影格式为CPP的视频帧
 	*/
-	void Player::_drawFrameCPPWithIndex() {
+	void Player::drawFrameCPPWithIndex_Obsolete() {
 		/*glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);*/
 		glViewport(0, 0, windowWidth, windowHeight);
@@ -1042,7 +1042,7 @@ namespace Player {
 		glCheckError();
 	}
 
-	void Player::_drawFrameCPPWithoutIndex() {
+	void Player::drawFrameCPPWithoutIndex_Obsolete() {
 		/*glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);*/
 		glViewport(0, 0, windowWidth, windowHeight);
@@ -1779,7 +1779,7 @@ namespace Player {
 		return true;
 	}
 
-	void Player::_drawFrameCppEqualDistance() {
+	void Player::drawFrameCppEqualDistance() {
 		glViewport(0, 0, windowWidth, windowHeight);
 		glDisable(GL_DEPTH_TEST);
 
