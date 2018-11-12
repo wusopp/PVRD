@@ -40,6 +40,7 @@ extern "C"
 enum ProjectionMode {
 	PM_ERP = 0, // ERP格式
 	PM_CPP_OBSOLETE,
+    PM_CUBEMAP,
 	PM_CPP, // CPP格式
 	PM_NOT_SPECIFIED, // 未指定格式
 };
@@ -60,6 +61,15 @@ enum DecodeType {
 	DT_HARDWARE = 0,
 	DT_SOFTWARE,
 	DT_NOT_SPECIFIED
+};
+
+enum CubemapFaceDirection {
+    CubemapFaceDirection_Right = 0,
+    CubemapFaceDirection_Left,
+    CubemapFaceDirection_Top,
+    CubemapFaceDirection_Bottom,
+    CubemapFaceDirection_Front,
+    CubemapFaceDirection_Back  
 };
 
 typedef struct VertexStruct {
@@ -119,6 +129,10 @@ namespace Player {
 		void computeViewMatrix();
 		bool decodeOneFrame();
 
+    private:
+        bool setupCubeMapCoordinates();
+        void drawFrameCubeMap();
+        GLuint skyboxTextureID;
 
 	private:
 		bool setupCppEqualDistanceCoordinates();

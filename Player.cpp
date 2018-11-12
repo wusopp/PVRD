@@ -158,10 +158,6 @@ namespace Player {
 			return false;
 		}
 
-		if (!setupShaders()) {
-			std::cout << __FUNCTION__ << "- SetupGraphics failed." << std::endl;
-			return false;
-		}
 
 		if (!setupCodec()) {
 			std::cout << __FUNCTION__ << "- setupCodec failed." << std::endl;
@@ -364,9 +360,72 @@ namespace Player {
 		} else if (this->projectionMode == PM_CPP) {
 			setupCppEqualDistanceCoordinates();
 			result = true;
+        } else if (this->projectionMode == PM_CUBEMAP) {
+            setupCubeMapCoordinates();
+            result = true;
         }
 		return result;
 	}
+
+    bool Player::setupCubeMapCoordinates() {
+        this->vertexCount = 36;
+        float skyboxVertices[] = {
+            // positions          
+            -1.0f,  1.0f, -1.0f,
+            -1.0f, -1.0f, -1.0f,
+            1.0f, -1.0f, -1.0f,
+            1.0f, -1.0f, -1.0f,
+            1.0f,  1.0f, -1.0f,
+            -1.0f,  1.0f, -1.0f,
+
+            -1.0f, -1.0f,  1.0f,
+            -1.0f, -1.0f, -1.0f,
+            -1.0f,  1.0f, -1.0f,
+            -1.0f,  1.0f, -1.0f,
+            -1.0f,  1.0f,  1.0f,
+            -1.0f, -1.0f,  1.0f,
+
+            1.0f, -1.0f, -1.0f,
+            1.0f, -1.0f,  1.0f,
+            1.0f,  1.0f,  1.0f,
+            1.0f,  1.0f,  1.0f,
+            1.0f,  1.0f, -1.0f,
+            1.0f, -1.0f, -1.0f,
+
+            -1.0f, -1.0f,  1.0f,
+            -1.0f,  1.0f,  1.0f,
+            1.0f,  1.0f,  1.0f,
+            1.0f,  1.0f,  1.0f,
+            1.0f, -1.0f,  1.0f,
+            -1.0f, -1.0f,  1.0f,
+
+            -1.0f,  1.0f, -1.0f,
+            1.0f,  1.0f, -1.0f,
+            1.0f,  1.0f,  1.0f,
+            1.0f,  1.0f,  1.0f,
+            -1.0f,  1.0f,  1.0f,
+            -1.0f,  1.0f, -1.0f,
+
+            -1.0f, -1.0f, -1.0f,
+            -1.0f, -1.0f,  1.0f,
+            1.0f, -1.0f, -1.0f,
+            1.0f, -1.0f, -1.0f,
+            -1.0f, -1.0f,  1.0f,
+            1.0f, -1.0f,  1.0f
+        };
+
+        glGenVertexArrays(1, &sceneVAO);
+        glBindVertexArray(sceneVAO);
+
+        glGenBuffers(1, &sceneVertexBuffer);
+        glBindBuffer(GL_ARRAY_BUFFER, sceneVertexBuffer);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxVertices), &skyboxVertices, GL_STATIC_DRAW);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+
+        glBindVertexArray(0);
+        return true;
+    }
+
 
 	bool Player::_setupERPCoordinatesWithIndex() {
 		glCheckError();
@@ -836,7 +895,7 @@ namespace Player {
 
 		} else if (this->videoFileType == VFT_Encoded && this->decodeType == DT_SOFTWARE) {
 			pthread_mutex_lock(&this->lock);
-            this->setupTextureData(decodedRGBABuffer);
+            this->setupTextureData(decodedYUVBuffer);
 			pthread_mutex_unlock(&this->lock);
 		} else if (this->videoFileType == VFT_Encoded && this->decodeType == DT_HARDWARE) {
 			static bool firstTime = true;
@@ -868,10 +927,26 @@ namespace Player {
 			}
 		} else if (this->projectionMode == PM_CPP) {
 			_drawFrameCppEqualDistance();
-		}
+        } else if (this->projectionMode == PM_CUBEMAP) {
+            drawFrameCubeMap();
+        }
 	}
 
+    void Player::drawFrameCubeMap() {
+        glViewport(0, 0, windowWidth, windowHeight);
+        glDisable(GL_DEPTH_TEST);
+        glUseProgram(sceneProgramID);
+        glUniformMatrix4fv(sceneMVPMatrixPointer, 1, GL_FALSE, &mvpMatrix[0][0]);
+        glBindVertexArray(sceneVAO);
+        glBindBuffer(GL_ARRAY_BUFFER, sceneVertexBuffer);
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (const void *)0);
 
+        glDrawArrays(GL_TRIANGLES, 0, 36);
+        
+        glBindVertexArray(0);
+        SDL_GL_SwapWindow(pWindow);
+    }
 
 	void Player::_drawFrameERPWithIndex() {
 		/*glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
@@ -1011,35 +1086,51 @@ namespace Player {
 		static bool firstTime = true;
 		assert(videoFrameHeight > 0 && videoFrameWidth > 0);
 		glUseProgram(sceneProgramID);
+         
+        if (this->projectionMode == PM_CUBEMAP) {
+            
+            unsigned char pointers[6];
 
-        if (this->renderYUV) {
-            unsigned char *yuvPlanes[3];
-            yuvPlanes[0] = textureData;
-            yuvPlanes[1] = textureData + this->videoFrameWidth * this->videoFrameHeight;
-            yuvPlanes[2] = textureData + this->videoFrameWidth * this->videoFrameHeight / 4 * 5;
-
-            for (int i = 0; i < 3; i++) {
-                int w = (i == 0 ? this->videoFrameWidth : this->videoFrameWidth / 2);
-                int h = (i == 0 ? this->videoFrameHeight : this->videoFrameHeight / 2);
-
-                glActiveTexture(GL_TEXTURE0 + i);
-                glBindTexture(GL_TEXTURE_2D, yuvTexturesID[i]);
-                if (firstTime) {
-                    glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, w, h, 0, GL_RED, GL_UNSIGNED_BYTE, static_cast<const GLvoid*>(yuvPlanes[i]));
-                    firstTime = true;
-                    glCheckError();
-                } else {
-                    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, GL_RED, GL_UNSIGNED_BYTE, static_cast<const GLvoid*>(yuvPlanes[i]));
-                    glCheckError();
-                }
+            glBindTexture(GL_TEXTURE_2D, skyboxTextureID);
+            
+            for (int i = 0; i < 6; i++) {
+                glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RED, 512, 512, 0, GL_RED, GL_UNSIGNED_BYTE, NULL);
             }
-        } else {
-            glBindTexture(GL_TEXTURE_2D, sceneTextureID);
 
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, videoFrameWidth, videoFrameHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, textureData);
-            /*unsigned int size = ((videoFrameWidth + 3) / 4)*((videoFrameHeight + 3) / 4) * 8;
-            glCompressedTexImage2D(GL_TEXTURE_2D, 0, GL_COMPRESSED_RGBA_S3TC_DXT1_EXT, videoFrameWidth, videoFrameHeight, 0, size, compressedTextureBuffer);*/
+        } else {
+            if (this->renderYUV) {
+                unsigned char *yuvPlanes[3];
+                yuvPlanes[0] = textureData;
+                yuvPlanes[1] = textureData + this->videoFrameWidth * this->videoFrameHeight;
+                yuvPlanes[2] = textureData + this->videoFrameWidth * this->videoFrameHeight / 4 * 5;
+
+                for (int i = 0; i < 3; i++) {
+                    int w = (i == 0 ? this->videoFrameWidth : this->videoFrameWidth / 2);
+                    int h = (i == 0 ? this->videoFrameHeight : this->videoFrameHeight / 2);
+
+                    glActiveTexture(GL_TEXTURE0 + i);
+                    glBindTexture(GL_TEXTURE_2D, yuvTexturesID[i]);
+                    if (firstTime) {
+                        glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, w, h, 0, GL_RED, GL_UNSIGNED_BYTE, static_cast<const GLvoid*>(yuvPlanes[i]));
+                        firstTime = true;
+                        glCheckError();
+                    } else {
+                        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, GL_RED, GL_UNSIGNED_BYTE, static_cast<const GLvoid*>(yuvPlanes[i]));
+                        glCheckError();
+                    }
+                }
+            } else {
+                glBindTexture(GL_TEXTURE_2D, sceneTextureID);
+
+                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, videoFrameWidth, videoFrameHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, textureData);
+                /*unsigned int size = ((videoFrameWidth + 3) / 4)*((videoFrameHeight + 3) / 4) * 8;
+                glCompressedTexImage2D(GL_TEXTURE_2D, 0, GL_COMPRESSED_RGBA_S3TC_DXT1_EXT, videoFrameWidth, videoFrameHeight, 0, size, compressedTextureBuffer);*/
+            }
         }
+
+
+
+        
 		return true;
 	}
 
@@ -1052,6 +1143,7 @@ namespace Player {
 		this->drawMode = draw;
 		this->decodeType = decode;
 		this->videoFileType = fileType;
+        setupShaders();
 		setupCoordinates();
 		setupTexture();
 	}
@@ -1169,45 +1261,66 @@ namespace Player {
 			return false;
 		}
 
-        char VERTEX_SHADER[] =
-            "#version 410 core\n"
-            "uniform mat4 matrix;\n"
-            "layout(location = 0) in vec4 position;\n"
-            "layout(location = 1) in vec2 uvCoords;\n"
-            "out vec2 uvCoordsOut;\n"
-            "void main() {\n"
-            "	uvCoordsOut = uvCoords;\n"
-            "	gl_Position = matrix * position;\n"
-            "}\n";
+        char *VERTEX_SHADER = NULL, *FRAGMENT_SHADER = NULL;
 
-        char *FRAGMENT_SHADER = NULL;
-
-        if (this->renderYUV == true) {
-            FRAGMENT_SHADER =
-                "precision mediump float;\n"
-                "varying vec2 uvCoordsOut;\n"
-                "uniform sampler2D y_tex;\n"
-                "uniform sampler2D u_tex;\n"
-                "uniform sampler2D v_tex;\n"
+        if (this->projectionMode == PM_CUBEMAP) {
+            VERTEX_SHADER =
+                "#version 410 core\n"
+                "uniform mat4 matrix;\n"
+                "out vec3 TexCoords;\n"
+                "layout(location = 0) in vec3 position;\n"
                 "void main() {\n"
-                "       float y = 1.164 * (texture2D(y_tex, uvCoordsOut).r - 0.0625);\n"
-                "       float u = texture2D(u_tex, uvCoordsOut).r - 0.5;\n"
-                "       float v = texture2D(v_tex, uvCoordsOut).r - 0.5;\n"
-                "       gl_FragColor = vec4(y + 1.596 * v, "
-                "                      y - 0.391 * u - 0.813 * v, "
-                "                      y + 2.018 * u, "
-                "                      1.0);\n"
+                "   TexCoords = position;\n"
+                "   gl_Position = matrix * position;\n"
+                "}\n";
+
+            FRAGMENT_SHADER =
+                "varying vec3 TexCoords;\n"
+                "uniform sampler2D mytexture;\n"
+                "void main() {\n"
+                "   gl_FragColor = texture2D(mytexture, TexCoords);\n"
                 "}\n";
         } else {
-            FRAGMENT_SHADER =
+            VERTEX_SHADER =
                 "#version 410 core\n"
-                "uniform sampler2D mytexture;\n"
-                "in vec2 uvCoordsOut;\n"
+                "uniform mat4 matrix;\n"
+                "layout(location = 0) in vec4 position;\n"
+                "layout(location = 1) in vec2 uvCoords;\n"
+                "out vec2 uvCoordsOut;\n"
                 "void main() {\n"
-                "	gl_FragColor = texture(mytexture,uvCoordsOut);\n"
+                "	uvCoordsOut = uvCoords;\n"
+                "	gl_Position = matrix * position;\n"
                 "}\n";
+
+            char *FRAGMENT_SHADER = NULL;
+
+            if (this->renderYUV == true) {
+                FRAGMENT_SHADER =
+                    "precision mediump float;\n"
+                    "varying vec2 uvCoordsOut;\n"
+                    "uniform sampler2D y_tex;\n"
+                    "uniform sampler2D u_tex;\n"
+                    "uniform sampler2D v_tex;\n"
+                    "void main() {\n"
+                    "       float y = 1.164 * (texture2D(y_tex, uvCoordsOut).r - 0.0625);\n"
+                    "       float u = texture2D(u_tex, uvCoordsOut).r - 0.5;\n"
+                    "       float v = texture2D(v_tex, uvCoordsOut).r - 0.5;\n"
+                    "       gl_FragColor = vec4(y + 1.596 * v, "
+                    "                      y - 0.391 * u - 0.813 * v, "
+                    "                      y + 2.018 * u, "
+                    "                      1.0);\n"
+                    "}\n";
+            } else {
+                FRAGMENT_SHADER =
+                    "#version 410 core\n"
+                    "uniform sampler2D mytexture;\n"
+                    "in vec2 uvCoordsOut;\n"
+                    "void main() {\n"
+                    "	gl_FragColor = texture(mytexture,uvCoordsOut);\n"
+                    "}\n";
+            }
         }
-        
+
 		addShader(GL_VERTEX_SHADER, VERTEX_SHADER, sceneProgramID);
 		glCheckError();
 		addShader(GL_FRAGMENT_SHADER, FRAGMENT_SHADER, sceneProgramID);
@@ -1231,16 +1344,46 @@ namespace Player {
 	* 设置纹理参数
 	*/
 	bool Player::setupTexture() {
-
 		glUseProgram(sceneProgramID);
-		if (this->decodeType == DT_SOFTWARE) {
+        if (this->projectionMode == PM_CUBEMAP) {
+            glGenTextures(1, &skyboxTextureID);
+            glBindTexture(GL_TEXTURE_CUBE_MAP, skyboxTextureID);
+            glUniform1i(glGetUniformLocation(sceneProgramID, "mytexture"), 0);
 
-            if (this->renderYUV) {
-                glGenTextures(3, yuvTexturesID);
-                for (int i = 0; i < 3; i++) {
-                    glUniform1i(glGetUniformLocation(sceneProgramID, TEXTURE_UNIFORMS[i]), i);
-                    glActiveTexture(GL_TEXTURE0 + i);
-                    glBindTexture(GL_TEXTURE_2D, yuvTexturesID[i]);
+
+            glTexParameterf(GL_TEXTURE_CUBE_MAP,
+                GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameterf(GL_TEXTURE_CUBE_MAP,
+                GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            glTexParameterf(GL_TEXTURE_CUBE_MAP,
+                GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            glTexParameterf(GL_TEXTURE_CUBE_MAP,
+                GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+            glTexParameterf(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
+        } else {
+            if (this->decodeType == DT_SOFTWARE) {
+
+                if (this->renderYUV) {
+                    glGenTextures(3, yuvTexturesID);
+                    for (int i = 0; i < 3; i++) {
+                        glUniform1i(glGetUniformLocation(sceneProgramID, TEXTURE_UNIFORMS[i]), i);
+                        glActiveTexture(GL_TEXTURE0 + i);
+                        glBindTexture(GL_TEXTURE_2D, yuvTexturesID[i]);
+                        glTexParameterf(GL_TEXTURE_2D,
+                            GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+                        glTexParameterf(GL_TEXTURE_2D,
+                            GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+                        glTexParameterf(GL_TEXTURE_2D,
+                            GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+                        glTexParameterf(GL_TEXTURE_2D,
+                            GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+                    }
+
+                } else {
+                    glGenTextures(1, &sceneTextureID);
+                    glUniform1i(glGetUniformLocation(sceneProgramID, "mytexture"), 0);
+                    glBindTexture(GL_TEXTURE_2D, sceneTextureID);
                     glTexParameterf(GL_TEXTURE_2D,
                         GL_TEXTURE_MIN_FILTER, GL_LINEAR);
                     glTexParameterf(GL_TEXTURE_2D,
@@ -1250,46 +1393,33 @@ namespace Player {
                     glTexParameterf(GL_TEXTURE_2D,
                         GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
                 }
-            
-            } else {
-                glGenTextures(1, &sceneTextureID);
+            } else if (this->decodeType == DT_HARDWARE) {
+                cudaDeviceProp prop;
+                int dev;
+                memset(&prop, 0, sizeof(cudaDeviceProp));
+
+                prop.major = 1;
+                prop.minor = 0;
+
+                cudaError_t err = cudaChooseDevice(&dev, &prop);
+                assert(err == CUDA_SUCCESS);
+
+                cudaGLSetGLDevice(dev);
+
+                glGenTextures(1, &cudaTextureID);
                 glUniform1i(glGetUniformLocation(sceneProgramID, "mytexture"), 0);
-                glBindTexture(GL_TEXTURE_2D, sceneTextureID);
-                glTexParameterf(GL_TEXTURE_2D,
-                    GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-                glTexParameterf(GL_TEXTURE_2D,
-                    GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-                glTexParameterf(GL_TEXTURE_2D,
-                    GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-                glTexParameterf(GL_TEXTURE_2D,
-                    GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+                glBindTexture(GL_TEXTURE_2D, cudaTextureID);
+
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, videoFrameWidth, videoFrameHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+
+                //glBindTexture(GL_TEXTURE_2D, 0);
             }
-		} else if (this->decodeType == DT_HARDWARE) {
-			cudaDeviceProp prop;
-			int dev;
-			memset(&prop, 0, sizeof(cudaDeviceProp));
-
-			prop.major = 1;
-			prop.minor = 0;
-
-			cudaError_t err = cudaChooseDevice(&dev, &prop);
-			assert(err == CUDA_SUCCESS);
-
-			cudaGLSetGLDevice(dev);
-
-			glGenTextures(1, &cudaTextureID);
-			glUniform1i(glGetUniformLocation(sceneProgramID, "mytexture"), 0);
-			glBindTexture(GL_TEXTURE_2D, cudaTextureID);
-
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, videoFrameWidth, videoFrameHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-
-			//glBindTexture(GL_TEXTURE_2D, 0);
-		}
+        }
 		glUseProgram(0);
 		glCheckError();
 		return true;
@@ -1724,6 +1854,7 @@ namespace Player {
 
 						pthread_mutex_lock(&player->lock);
 						avpicture_layout((AVPicture *)player->pFrame, AV_PIX_FMT_YUV420P, player->pCodecContext->width, player->pCodecContext->height, player->decodedYUVBuffer, player->numberOfBytesPerFrame);
+                        pthread_mutex_unlock(&player->lock);
 
 						av_free_packet(&player->packet);
 
