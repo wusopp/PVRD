@@ -72,7 +72,7 @@ namespace Player {
 			pWindow = NULL;
 		}
 		if (decodedYUVBuffer != NULL) {
-			delete[] decodedYUVBuffer;
+			av_free(decodedYUVBuffer) ;
 			decodedYUVBuffer = NULL;
 		}
 
