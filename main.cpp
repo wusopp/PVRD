@@ -84,11 +84,11 @@ int main(int argv, char** args) {
 
 	Player::Player *player = new Player::Player(frameWidth, frameHeight, patches);
 
-	std::string filePath = "D:\\WangZewei\\360Video\\VRTest.mp4";
+	std::string filePath = "D:\\WangZewei\\360Video\\VRTest_1920_960.mp4";
 	//std::string filePath = "D:\\WangZewei\\YUV\\shark.yuv";
-    player->setRenderYUV(false);
+
+    player->setRenderYUV(true);
 	player->setupMode(PM_ERP, DM_USE_INDEX, DT_SOFTWARE, VFT_Encoded);
-    
 	player->openVideoFile(filePath);
 
 	player->setupThread();
