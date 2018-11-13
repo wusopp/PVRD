@@ -204,9 +204,9 @@ namespace Player {
 				return false;
 			}
 
-			//pCodecContextOriginal = pFormatContext->streams[videoStreamIndex]->codec;
+			pCodecContextOriginal = pFormatContext->streams[videoStreamIndex]->codec;
 
-			pCodec = avcodec_find_decoder(pFormatContext->streams[videoStreamIndex]->codec->codec_id);
+			pCodec = avcodec_find_decoder(pCodecContextOriginal->codec_id);
 
 			if (pCodec == NULL) {
 				return false; // Codec not found
@@ -229,17 +229,37 @@ namespace Player {
 				return false;
 			}
 
+            pFrameRGB = av_frame_alloc();
+
+
+
 			av_init_packet(&packet);
 
-            numberOfBytesPerFrame = avpicture_get_size(AV_PIX_FMT_YUV420P, pCodecContext->width, pCodecContext->height);
+            //numberOfBytesPerFrame = avpicture_get_size(AV_PIX_FMT_YUV420P, pCodecContext->width, pCodecContext->height);
+
+            numberOfBytesPerFrame = avpicture_get_size(AV_PIX_FMT_RGB24,
+                pCodecContext->width, pCodecContext->height);
+            decodedRGB24Buffer = (uint8_t *)av_malloc(numberOfBytesPerFrame * sizeof(uint8_t));
+            if (decodedRGB24Buffer == NULL) {
+                std::cout << "Failed to malloc for decodedRGB24Buffer" << std::endl;
+                return false;
+            }
+
+
+            avpicture_fill((AVPicture *)pFrameRGB, decodedRGB24Buffer, AV_PIX_FMT_RGB24, pCodecContext->width, pCodecContext->height);
+
+            swsContext = sws_getContext(pCodecContext->width, pCodecContext->height, pCodecContext->pix_fmt, pCodecContext->width, pCodecContext->height, AV_PIX_FMT_RGB24, SWS_BILINEAR, NULL, NULL, NULL);
             
-            decodedYUVBuffer = (uint8_t *)av_malloc(numberOfBytesPerFrame*sizeof(uint8_t));
+
+            /*decodedYUVBuffer = (uint8_t *)av_malloc(numberOfBytesPerFrame*sizeof(uint8_t));
             if (decodedYUVBuffer == NULL) {
                 std::cout << "Failed to malloc for decodedYUVBuffer" << std::endl;
                 return false;
             }
 
-            avpicture_fill((AVPicture *)pFrame, decodedYUVBuffer, AV_PIX_FMT_YUV420P, pCodecContext->width, pCodecContext->height);
+            avpicture_fill((AVPicture *)pFrame, decodedYUVBuffer, AV_PIX_FMT_YUV420P, pCodecContext->width, pCodecContext->height);*/
+
+            
 
 			return true;
 		} else if (videoFileType == VFT_Encoded && decodeType == DT_HARDWARE) {
@@ -895,7 +915,8 @@ namespace Player {
 
 		} else if (this->videoFileType == VFT_Encoded && this->decodeType == DT_SOFTWARE) {
 			pthread_mutex_lock(&this->lock);
-            this->setupTextureData(decodedYUVBuffer);
+            //this->setupTextureData(decodedYUVBuffer);
+            this->setupTextureData(decodedRGB24Buffer);
 			pthread_mutex_unlock(&this->lock);
 		} else if (this->videoFileType == VFT_Encoded && this->decodeType == DT_HARDWARE) {
 			static bool firstTime = true;
@@ -1122,7 +1143,10 @@ namespace Player {
             } else {
                 glBindTexture(GL_TEXTURE_2D, sceneTextureID);
 
-                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, videoFrameWidth, videoFrameHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, textureData);
+                /*glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, videoFrameWidth, videoFrameHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, textureData);*/
+
+                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, videoFrameWidth, videoFrameHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
+
                 /*unsigned int size = ((videoFrameWidth + 3) / 4)*((videoFrameHeight + 3) / 4) * 8;
                 glCompressedTexImage2D(GL_TEXTURE_2D, 0, GL_COMPRESSED_RGBA_S3TC_DXT1_EXT, videoFrameWidth, videoFrameHeight, 0, size, compressedTextureBuffer);*/
             }
@@ -1847,12 +1871,18 @@ namespace Player {
 				if (player->packet.stream_index == player->videoStreamIndex) {
 					avcodec_decode_video2(player->pCodecContext, player->pFrame, &player->frameFinished, &player->packet);
 					if (player->frameFinished) {
-						
-						sem_wait(&player->renderFinishedSemaphore);
 
+                        sws_scale(player->swsContext, (uint8_t const* const *)player->pFrame->data, player->pFrame->linesize, 0, player->pCodecContext->height, player->pFrameRGB->data, player->pFrameRGB->linesize);
+
+                        
+                        sem_wait(&player->renderFinishedSemaphore);
+						
 						pthread_mutex_lock(&player->lock);
-						avpicture_layout((AVPicture *)player->pFrame, AV_PIX_FMT_YUV420P, player->pCodecContext->width, player->pCodecContext->height, player->decodedYUVBuffer, player->numberOfBytesPerFrame);
+						//avpicture_layout((AVPicture *)player->pFrame, AV_PIX_FMT_YUV420P, player->pCodecContext->width, player->pCodecContext->height, player->decodedYUVBuffer, player->numberOfBytesPerFrame);
+                        avpicture_layout((AVPicture *)player->pFrameRGB, AV_PIX_FMT_RGB24, player->pCodecContext->width, player->pCodecContext->height, player->decodedRGB24Buffer, player->numberOfBytesPerFrame);
                         pthread_mutex_unlock(&player->lock);
+
+
 
 						av_free_packet(&player->packet);
 
