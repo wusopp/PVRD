@@ -103,8 +103,8 @@ namespace Player {
 		// 设置投影和绘制格式, 必须在renderLoop之前进行
 		void setupMode(ProjectionMode projection, DrawMode draw, DecodeType decode, VideoFileType fileType);
 
-        inline void setRenderYUV(bool will) {
-            this->renderYUV = will;
+        inline void setRenderYUV(bool renderYUV) {
+            this->renderYUV = renderYUV;
         }
 
 	public:
