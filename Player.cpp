@@ -15,7 +15,7 @@ void addShader(int type, const char * source, int program) {
 	GLint compiled = 0;
 	glGetShaderiv(shader, GL_COMPILE_STATUS, &compiled);
 	if (compiled != GL_TRUE) {
-		std::cout << "Failed to add shader." << std::endl;
+		std::cout << "Failed to add shader: " << (type == GL_VERTEX_SHADER?"VERTEX_SHADER":"FRAGMENT_SHADER") << std::endl;
 	}
 	glAttachShader(program, shader);
 	glDeleteShader(shader);
@@ -1125,6 +1125,7 @@ namespace Player {
 		}
 	}
 
+
 	/**
 	* 设置视频帧数据
 	*/
@@ -1132,16 +1133,41 @@ namespace Player {
 		static bool firstTime = true;
 		assert(videoFrameHeight > 0 && videoFrameWidth > 0);
 		glUseProgram(sceneProgramID);
-         
-        if (this->projectionMode == PM_CUBEMAP) {
-            
-            unsigned char pointers[6];
 
-            glBindTexture(GL_TEXTURE_2D, skyboxTextureID);
-            
-            for (int i = 0; i < 6; i++) {
-                glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RED, 512, 512, 0, GL_RED, GL_UNSIGNED_BYTE, NULL);
-            }
+        if (this->projectionMode == PM_CUBEMAP) {
+            glBindTexture(GL_TEXTURE_2D, sceneTextureID);
+
+            // Common
+            glPixelStorei(GL_UNPACK_ROW_LENGTH, videoFrameWidth);
+
+            // Facebook Transform转换出来的是3*2的，从左到右从前到后，依次是：右、左、上、下、前、后
+            // GL_UNPACK_SKIP_PIXELS指定跳过该行的多少个像素
+            // GL_UNPACK_SKIP_ROWS指定跳过多少列(从上往下数)
+
+            // 左
+            glPixelStorei(GL_UNPACK_SKIP_PIXELS, 512);
+            glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_X, 0, GL_RGB, 512, 512, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
+
+            // 上
+            glPixelStorei(GL_UNPACK_SKIP_PIXELS, 1024);
+            glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_Y, 0, GL_RGB, 512, 512, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
+
+            // 下
+            glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
+            glPixelStorei(GL_UNPACK_SKIP_ROWS, 512);
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, 0, GL_RGB, 512, 512, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
+
+            // 前
+            glPixelStorei(GL_UNPACK_SKIP_PIXELS, 512);
+            glPixelStorei(GL_UNPACK_SKIP_ROWS, 512);
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_Z, 0, GL_RGB, 512, 512, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
+
+            // 右
+            glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
+            glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X, 0, GL_RGB, 512, 512, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
 
         } else {
             if (this->renderYUV) {
@@ -1314,20 +1340,21 @@ namespace Player {
 
         if (this->projectionMode == PM_CUBEMAP) {
             VERTEX_SHADER =
-                "#version 410 core\n"
+                "#version 330 core\n"
                 "uniform mat4 matrix;\n"
                 "out vec3 TexCoords;\n"
-                "layout(location = 0) in vec3 position;\n"
+                "layout(location = 0) in vec4 position;\n"
                 "void main() {\n"
-                "   TexCoords = position;\n"
+                "   TexCoords = position.xyz;\n"
                 "   gl_Position = matrix * position;\n"
                 "}\n";
 
             FRAGMENT_SHADER =
+                "#version 330 core\n"
                 "varying vec3 TexCoords;\n"
-                "uniform sampler2D mytexture;\n"
+                "uniform samplerCube mytexture;\n"
                 "void main() {\n"
-                "   gl_FragColor = texture2D(mytexture, TexCoords);\n"
+                "   gl_FragColor = texture(mytexture, TexCoords);\n"
                 "}\n";
         } else {
             VERTEX_SHADER =
@@ -1343,6 +1370,7 @@ namespace Player {
 
             if (this->renderYUV == true) {
                 FRAGMENT_SHADER =
+                    "#version 410 core\n"
                     "precision mediump float;\n"
                     "varying vec2 uvCoordsOut;\n"
                     "uniform sampler2D y_tex;\n"
@@ -1393,8 +1421,8 @@ namespace Player {
 	bool Player::setupTexture() {
 		glUseProgram(sceneProgramID);
         if (this->projectionMode == PM_CUBEMAP) {
-            glGenTextures(1, &skyboxTextureID);
-            glBindTexture(GL_TEXTURE_CUBE_MAP, skyboxTextureID);
+            glGenTextures(1, &sceneTextureID);
+            glBindTexture(GL_TEXTURE_CUBE_MAP, sceneTextureID);
             glUniform1i(glGetUniformLocation(sceneProgramID, "mytexture"), 0);
 
 

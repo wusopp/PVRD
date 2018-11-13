@@ -79,16 +79,17 @@ int main(int argv, char** args) {
 		}
 	}
 
-	int frameWidth = 1920;
-	int frameHeight = 960;
+	int frameWidth = 1536;
+	int frameHeight = 1024;
 
 	Player::Player *player = new Player::Player(frameWidth, frameHeight, patches);
 
-	std::string filePath = "D:\\WangZewei\\360Video\\VRTest_1920_960.mp4";
+	//std::string filePath = "D:\\WangZewei\\360Video\\VRTest_1920_960.mp4";
 	//std::string filePath = "D:\\WangZewei\\YUV\\shark.yuv";
+    std::string filePath = "D:\\WangZewei\\360Video\\Cubemap_1536_1024.mp4";
 
-    player->setRenderYUV(true);
-	player->setupMode(PM_ERP, DM_USE_INDEX, DT_SOFTWARE, VFT_Encoded);
+    player->setRenderYUV(false);
+	player->setupMode(PM_CUBEMAP, DM_USE_INDEX, DT_SOFTWARE, VFT_Encoded);
 	player->openVideoFile(filePath);
 
 	player->setupThread();

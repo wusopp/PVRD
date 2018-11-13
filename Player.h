@@ -132,7 +132,6 @@ namespace Player {
     private:
         bool setupCubeMapCoordinates();
         void drawFrameCubeMap();
-        GLuint skyboxTextureID;
 
 	private:
 		bool setupCppEqualDistanceCoordinates();
