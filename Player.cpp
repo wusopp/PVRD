@@ -318,8 +318,6 @@ namespace Player {
 
 			return true;
 		} else if (videoFileType == VFT_YUV) {
-            this->renderYUV = true;
-
 			this->videoFileInputStream.open(filePath, std::ios::binary | std::ios::in);
 
 			assert(this->videoFrameWidth != 0 && this->videoFrameHeight != 0);
@@ -1179,16 +1177,13 @@ namespace Player {
                 for (int i = 0; i < 3; i++) {
                     int w = (i == 0 ? this->videoFrameWidth : this->videoFrameWidth / 2);
                     int h = (i == 0 ? this->videoFrameHeight : this->videoFrameHeight / 2);
-
                     glActiveTexture(GL_TEXTURE0 + i);
                     glBindTexture(GL_TEXTURE_2D, yuvTexturesID[i]);
                     if (firstTime) {
                         glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, w, h, 0, GL_RED, GL_UNSIGNED_BYTE, static_cast<const GLvoid*>(yuvPlanes[i]));
                         firstTime = true;
-                        glCheckError();
                     } else {
                         glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, GL_RED, GL_UNSIGNED_BYTE, static_cast<const GLvoid*>(yuvPlanes[i]));
-                        glCheckError();
                     }
                 }
             } else {
@@ -1218,6 +1213,10 @@ namespace Player {
 		this->drawMode = draw;
 		this->decodeType = decode;
 		this->videoFileType = fileType;
+
+        if (this->videoFileType == VFT_YUV) {
+            this->setRenderYUV(true);
+        }
         setupShaders();
 		setupCoordinates();
 		setupTexture();
@@ -1435,6 +1434,7 @@ namespace Player {
             glTexParameterf(GL_TEXTURE_CUBE_MAP,
                 GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
             glTexParameterf(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+            
 
         } else {
             if (this->decodeType == DT_SOFTWARE) {
@@ -1453,8 +1453,8 @@ namespace Player {
                             GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
                         glTexParameterf(GL_TEXTURE_2D,
                             GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+                        
                     }
-
                 } else {
                     glGenTextures(1, &sceneTextureID);
                     glUniform1i(glGetUniformLocation(sceneProgramID, "mytexture"), 0);
@@ -1495,6 +1495,7 @@ namespace Player {
                 //glBindTexture(GL_TEXTURE_2D, 0);
             }
         }
+
 		glUseProgram(0);
 		glCheckError();
 		return true;
@@ -1860,8 +1861,6 @@ namespace Player {
 
 		computeMVPMatrix();
 		glUseProgram(sceneProgramID);
-
-		glBindTexture(GL_TEXTURE_2D, sceneTextureID);
 		glCheckError();
 
 		glUniformMatrix4fv(sceneMVPMatrixPointer, 1, GL_FALSE, &mvpMatrix[0][0]);
