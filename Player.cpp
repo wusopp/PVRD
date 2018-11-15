@@ -916,11 +916,11 @@ namespace Player {
 	* 根据投影格式来调用不同的渲染方法
 	*/
 	void Player::drawFrame() {
-		if (this->decodeType == DT_SOFTWARE) {
+        if (this->decodeType == DT_SOFTWARE) {
             if (this->renderYUV == false) {
                 glBindTexture(GL_TEXTURE_2D, sceneTextureID);
             }
-		} else if (this->decodeType == DT_HARDWARE) {
+        } else if (this->decodeType == DT_HARDWARE) {
 			glBindTexture(GL_TEXTURE_2D, cudaTextureID);
 		} else if (this->decodeType == DT_NOT_SPECIFIED) {
 			std::cout << "DecodeType not specified!" << std::endl;
@@ -1133,7 +1133,7 @@ namespace Player {
 		glUseProgram(sceneProgramID);
 
         if (this->projectionMode == PM_CUBEMAP) {
-            glBindTexture(GL_TEXTURE_2D, sceneTextureID);
+            glBindTexture(GL_TEXTURE_CUBE_MAP, sceneTextureID);
 
             // Common
             glPixelStorei(GL_UNPACK_ROW_LENGTH, videoFrameWidth);
