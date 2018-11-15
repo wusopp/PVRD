@@ -917,7 +917,7 @@ namespace Player {
 	*/
 	void Player::drawFrame() {
 
-        if (this->videoFileType = VFT_YUV) {
+        if (this->videoFileType == VFT_YUV) {
             pthread_mutex_lock(&this->lock);
             this->setupTextureData(decodedYUVBuffer);
             pthread_mutex_unlock(&this->lock);
