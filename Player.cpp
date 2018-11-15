@@ -916,47 +916,41 @@ namespace Player {
 	* 根据投影格式来调用不同的渲染方法
 	*/
 	void Player::drawFrame() {
-        if (this->decodeType == DT_SOFTWARE) {
-            if (this->renderYUV == false) {
-                glBindTexture(GL_TEXTURE_2D, sceneTextureID);
+
+        if (this->videoFileType = VFT_YUV) {
+            pthread_mutex_lock(&this->lock);
+            this->setupTextureData(decodedYUVBuffer);
+            pthread_mutex_unlock(&this->lock);
+        } else if (this->videoFileType == VFT_Encoded) {
+            if (this->decodeType == DT_HARDWARE) {
+                glBindTexture(GL_TEXTURE_2D, cudaTextureID);
+
+                static bool firstTime = true;
+                if (firstTime) {
+                    bool make = wglMakeCurrent(mainDeviceContext, mainGLRenderContext);
+                    if (make) {
+                        std::cout << "wglMakeCurrent ok" << std::endl;
+                    } else {
+                        std::cout << "wglMakeCurrent error" << std::endl;
+                    }
+                    firstTime = false;
+                }
+            } else if (this->decodeType == DT_SOFTWARE) {
+                pthread_mutex_lock(&this->lock);
+
+                if (this->renderYUV) {
+                    this->setupTextureData(decodedYUVBuffer);
+                } else {
+                    this->setupTextureData(decodedRGB24Buffer);
+                }
+
+                pthread_mutex_unlock(&this->lock);
             }
-        } else if (this->decodeType == DT_HARDWARE) {
-			glBindTexture(GL_TEXTURE_2D, cudaTextureID);
-		} else if (this->decodeType == DT_NOT_SPECIFIED) {
-			std::cout << "DecodeType not specified!" << std::endl;
-		}
-		if (this->videoFileType == VFT_YUV) {
+        }
 
-			pthread_mutex_lock(&this->lock);
-			this->setupTextureData(decodedYUVBuffer);
-			pthread_mutex_unlock(&this->lock);
-
-		} else if (this->videoFileType == VFT_Encoded && this->decodeType == DT_SOFTWARE) {
-			pthread_mutex_lock(&this->lock);
-
-            if (this->renderYUV) {
-                this->setupTextureData(decodedYUVBuffer);
-            } else {
-                this->setupTextureData(decodedRGB24Buffer);
-            }
-            
-			pthread_mutex_unlock(&this->lock);
-		} else if (this->videoFileType == VFT_Encoded && this->decodeType == DT_HARDWARE) {
-			static bool firstTime = true;
-			if (firstTime) {
-				bool make = wglMakeCurrent(mainDeviceContext, mainGLRenderContext);
-				if (make) {
-					std::cout << "wglMakeCurrent ok" << std::endl;
-				} else {
-					std::cout << "wglMakeCurrent error" << std::endl;
-				}
-				firstTime = false;
-			}
-		} else {
-			return;
-		}
 
 		if (this->projectionMode == PM_ERP) {
+
 			if (drawMode == DM_USE_INDEX) {
 				drawFrameERPWithIndex();
 			} else {
@@ -964,15 +958,21 @@ namespace Player {
 			}
 
 		} else if (this->projectionMode == PM_CPP_OBSOLETE) {
+
 			if (drawMode == DM_USE_INDEX) {
 				drawFrameCPPWithIndex_Obsolete();
 			} else {
 				drawFrameCPPWithoutIndex_Obsolete();
 			}
+
 		} else if (this->projectionMode == PM_CPP) {
+
 			drawFrameCppEqualDistance();
+
         } else if (this->projectionMode == PM_CUBEMAP) {
+
             drawFrameCubeMap();
+
         }
 	}
 
