@@ -39,9 +39,9 @@ extern "C"
 
 enum ProjectionMode {
 	PM_ERP = 0, // ERP格式
-	PM_CPP_OBSOLETE,
     PM_CUBEMAP,
 	PM_CPP, // CPP格式
+    PM_CPP_OBSOLETE,
 	PM_NOT_SPECIFIED, // 未指定格式
 };
 
@@ -58,8 +58,8 @@ enum VideoFileType {
 };
 
 enum DecodeType {
-	DT_HARDWARE = 0,
-	DT_SOFTWARE,
+    DT_SOFTWARE = 0,
+	DT_HARDWARE,
 	DT_NOT_SPECIFIED
 };
 
