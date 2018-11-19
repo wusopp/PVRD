@@ -111,7 +111,7 @@ namespace Player {
             this->repeatRendering = repeatRendering;
         }
 
-        void saveCurrentViewportToPNG(const char *fileName);
+        void saveViewport(const char *fileName);
 
 	public:
 		HGLRC mainGLRenderContext;

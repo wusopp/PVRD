@@ -108,16 +108,24 @@ namespace Player {
 		SDL_Quit();
 	}
 
-    void Player::saveCurrentViewportToPNG(const char *fileName) {
+    void Player::saveViewport(const char *fileName) {
         if (this->projectionMode != PM_CUBEMAP && this->renderYUV != true) {
             glBindTexture(GL_TEXTURE_2D, sceneTextureID);
             
 
-            unsigned char *data = new unsigned char[windowWidth*windowHeight * 3];
-            glReadPixels(0, 0, windowWidth, windowHeight, GL_RGB, GL_UNSIGNED_BYTE, data);
+            unsigned char *tmp = new unsigned char[windowWidth*windowHeight * 3];
+            unsigned char *data = new unsigned char[windowHeight*windowWidth * 3];
+            glReadPixels(0, 0, windowWidth, windowHeight, GL_RGB, GL_UNSIGNED_BYTE, tmp);
+
+            for (int i = 0; i < windowHeight; i++) {
+                memcpy(&data[i*windowWidth * 3], &tmp[(windowHeight - i-1)*windowWidth * 3], windowWidth * 3 * sizeof(unsigned char));
+            }
+
             stbi_write_png(fileName, windowWidth, windowHeight, 3, data, windowWidth * 3);
 
+            delete[] tmp;
             delete[] data;
+            glBindTexture(GL_TEXTURE_2D, 0);
         }
     }
 
@@ -933,9 +941,11 @@ namespace Player {
 	void Player::drawFrame() {
 
         if (this->videoFileType == VFT_YUV) {
+
             pthread_mutex_lock(&this->lock);
             this->setupTextureData(decodedYUVBuffer);
             pthread_mutex_unlock(&this->lock);
+
         } else if (this->videoFileType == VFT_Encoded) {
             if (this->decodeType == DT_HARDWARE) {
                 glBindTexture(GL_TEXTURE_2D, cudaTextureID);
