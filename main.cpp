@@ -23,6 +23,103 @@ void convertYUV2RGB(unsigned char *yuvData, unsigned char *rgbData, int frameWid
 	yuv420p_to_rgb24(yuvData, rgbData, frameWidth, frameHeight);
 }
 
+std::string videoFileName;
+std::string outputImageName;
+ProjectionMode projectionMode = PM_ERP;
+DrawMode drawMode = DM_USE_INDEX;
+VideoFileType videoFileType;
+DecodeType decodeType = DT_SOFTWARE;
+int patchNum;
+int frameWidth;
+int frameHeight;
+bool renderYUV = false;
+bool repeatRendering = false;
+
+// proj: 0-ERP, 1-CPP_Obsolete, 2-Cubemap, 3-Cpp, 4-Notspecial
+// draw: 0-useIndex, 1-dontUseIndex
+// type: 0-yuv, 1-encoded
+// decode: 0-software, 1-hardware
+// -patch 200 -video D:\\WangZewei\\360Video\\VRTest_1920_960.mp4 -output 200.png -proj 0 -draw 0 -decode 0 -type 1 -w 1920 -h 960 -repeat 0 -yuv 0
+void parseArguments(int argc, char *argv[]) {
+    if (!stricmp(argv[1], "-h") || !stricmp(argv[1], "-help")) {
+        std::cout << "Arguments Format:\n-patch 200 -video D:\\WangZewei\\360Video\\VRTest_1920_960.mp4 -output 200.png -proj 0 -draw 0 -decode 0 -type 0 -w 1920 -h 960 -repeat 0 -yuv 0\n";
+    } else {
+        {
+            for (int i = 1; i < argc; i += 2) {
+                if (!stricmp(argv[i], "-patch")) {
+                    patchNum = atoi(argv[i + 1]);
+                } else if (!stricmp(argv[i], "-video")) {
+                    videoFileName = argv[i + 1];
+                } else if (!stricmp(argv[i], "-output")) {
+                    outputImageName = argv[i + 1];
+                } else if (!stricmp(argv[i], "-proj")) {
+                    int value = atoi(argv[i + 1]);
+                    switch (value) {
+                    case PM_ERP:
+                        projectionMode = PM_ERP;
+                        break;
+                    case PM_CUBEMAP:
+                        projectionMode = PM_CUBEMAP;
+                        break;
+                    case PM_CPP:
+                        projectionMode = PM_CPP;
+                        break;
+                    case PM_CPP_OBSOLETE:
+                        projectionMode = PM_CPP_OBSOLETE;
+                        break;
+                    default:
+                        break;
+                    }
+                } else if (!stricmp(argv[i], "-draw")) {
+                    int draw = atoi(argv[i + 1]);
+                    switch (draw) {
+                    case DM_USE_INDEX:
+                        drawMode = DM_USE_INDEX;
+                        break;
+                    case DM_DONT_USE_INDEX:
+                        drawMode = DM_DONT_USE_INDEX;
+                        break;
+                    default:
+                        break;
+                    }
+                } else if (!stricmp(argv[i], "-decode")) {
+                    int value = atoi(argv[i + 1]);
+                    switch (value) {
+                    case DT_SOFTWARE:
+                        decodeType = DT_SOFTWARE;
+                        break;
+                    case DT_HARDWARE:
+                        decodeType = DT_HARDWARE;
+                        break;
+                    default:
+                        break;
+                    }
+                } else if (!stricmp(argv[i], "-type")) {
+                    int type = atoi(argv[i+1]);
+                    switch (type) {
+                    case VFT_Encoded:
+                        videoFileType = VFT_Encoded;
+                        break;
+                    case VFT_YUV:
+                        videoFileType = VFT_YUV;
+                        break;
+                    default:
+                        break;
+                    }
+                } else if (!stricmp(argv[i], "-w")) {
+                    frameWidth = atoi(argv[i + 1]);
+                } else if (!stricmp(argv[i], "-h")) {
+                    frameHeight = atoi(argv[i + 1]);
+                } else if (!stricmp(argv[i], "-repeat")) {
+                    repeatRendering = (atoi(argv[i + 1]) == 0 ? false : true);
+                } else if (!stricmp(argv[i], "-yuv")) {
+                    renderYUV = (atoi(argv[i + 1]) == 0 ? false : true);
+                }
+            }
+        }
+    }
+}
+
 //void ShowDecoderCapability() {
 //    ck(cuInit(0));
 //    int nGpu = 0;
@@ -66,36 +163,23 @@ void convertYUV2RGB(unsigned char *yuvData, unsigned char *rgbData, int frameWid
 //    }
 //}
 
-int main(int argv, char** args) {
+int main(int argc, char** argv) {
+    parseArguments(argc, argv);
 
-	int patches = 128;
-	if (argv == 1) {
-		patches = 128;
-	} else {
-		patches = atoi(args[1]);
-		if (patches == 0) {
-			std::cout << "Error: patches number not valid!" << std::endl;
-			return 0;
-		}
-	}
+	Player::Player *player = new Player::Player(frameWidth, frameHeight, patchNum);
+    player->setViewportImageFileName(outputImageName);
 
-	int frameWidth = 1920;
-	int frameHeight = 960;
-
-	Player::Player *player = new Player::Player(frameWidth, frameHeight, patches);
-
-	std::string filePath = "D:\\WangZewei\\360Video\\VRTest_1920_960.mp4";
+	//std::string filePath = "D:\\WangZewei\\360Video\\VRTest_1920_960.mp4";
 	//std::string filePath = "D:\\WangZewei\\YUV\\road.yuv";
     //std::string filePath = "D:\\WangZewei\\360Video\\Cubemap_1536_1024.mp4";
 
-    player->setRepeatRendering(false);
-    player->setRenderYUV(false);
-	player->setupMode(PM_ERP, DM_USE_INDEX, DT_SOFTWARE, VFT_Encoded);
-	player->openVideoFile(filePath);
+    player->setRepeatRendering(repeatRendering);
+    player->setRenderYUV(renderYUV);
+	player->setupMode(projectionMode, drawMode, decodeType, videoFileType);
+	player->openVideoFile(videoFileName);
 
 	player->setupThread();
 	player->renderLoopThread();
-	//player->renderLoop();
 
 	delete player;
 	return 0;
