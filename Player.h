@@ -107,6 +107,10 @@ namespace Player {
             this->renderYUV = renderYUV;
         }
 
+        inline void setRepeatRendering(bool repeatRendering) {
+            this->repeatRendering = repeatRendering;
+        }
+
 	public:
 		HGLRC mainGLRenderContext;
 		HDC mainDeviceContext;
@@ -241,5 +245,6 @@ namespace Player {
 		struct SwsContext *swsContext = NULL;
 		std::ifstream     videoFileInputStream;
         bool              renderYUV = true;
+        bool              repeatRendering = false;
 	};
 }

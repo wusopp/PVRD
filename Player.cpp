@@ -1980,18 +1980,31 @@ namespace Player {
 			}
 		} else if (player->videoFileType == VFT_YUV) {
 			while (true) {
-				if (player->videoFileInputStream.peek() == EOF) {
-					player->allFrameRead = true;
-					sem_post(&player->decodeAllFramesFinishedSemaphore);
-					pthread_exit(NULL);
-				}
-				static std::streampos pos = player->videoFrameHeight * player->videoFrameWidth * 3 / 2;
-				sem_wait(&player->renderFinishedSemaphore);
-				pthread_mutex_lock(&player->lock);
-				player->videoFileInputStream.read((char *)player->decodedYUVBuffer, pos);
-				player->videoFileInputStream.seekg(pos, std::ios_base::cur);
-				pthread_mutex_unlock(&player->lock);
-				sem_post(&player->decodeOneFrameFinishedSemaphore);
+                if (player->repeatRendering) {
+                    static std::streampos pos = player->videoFrameHeight * player->videoFrameWidth * 3 / 2;
+                    if (player->videoFileInputStream.peek() == EOF) {
+                        player->videoFileInputStream.seekg(0, std::ios_base::beg);
+                    }
+                    sem_wait(&player->renderFinishedSemaphore);
+                    pthread_mutex_lock(&player->lock);
+                    player->videoFileInputStream.read((char *)player->decodedYUVBuffer, pos);
+                    player->videoFileInputStream.seekg(pos, std::ios_base::cur);
+                    pthread_mutex_unlock(&player->lock);
+                    sem_post(&player->decodeOneFrameFinishedSemaphore);
+                } else {
+                    if (player->videoFileInputStream.peek() == EOF) {
+                        player->allFrameRead = true;
+                        sem_post(&player->decodeAllFramesFinishedSemaphore);
+                        pthread_exit(NULL);
+                    }
+                    static std::streampos pos = player->videoFrameHeight * player->videoFrameWidth * 3 / 2;
+                    sem_wait(&player->renderFinishedSemaphore);
+                    pthread_mutex_lock(&player->lock);
+                    player->videoFileInputStream.read((char *)player->decodedYUVBuffer, pos);
+                    player->videoFileInputStream.seekg(pos, std::ios_base::cur);
+                    pthread_mutex_unlock(&player->lock);
+                    sem_post(&player->decodeOneFrameFinishedSemaphore);
+                }
 			}
 		}
 		return NULL;
@@ -2002,13 +2015,31 @@ namespace Player {
 		bool bQuit = false;
 		int frameIndex = 0;
 		timeMeasurer->Start();
-		while (!bQuit && !this->allFrameRead) {
-            bQuit = this->handleInput();
-			sem_wait(&(this->decodeOneFrameFinishedSemaphore));
-			this->drawFrame();
-			sem_post(&this->renderFinishedSemaphore);
-			frameIndex++;
-		}
+        
+        if (this->repeatRendering) {
+            while (true) {
+                while (!bQuit && !this->allFrameRead) {
+                    bQuit = this->handleInput();
+                    sem_wait(&(this->decodeOneFrameFinishedSemaphore));
+                    this->drawFrame();
+                    sem_post(&this->renderFinishedSemaphore);
+                    frameIndex++;
+                }
+                if (bQuit) {
+                    break;
+                }
+            }
+        } else {
+            while (!bQuit && !this->allFrameRead) {
+                bQuit = this->handleInput();
+                sem_wait(&(this->decodeOneFrameFinishedSemaphore));
+                this->drawFrame();
+                sem_post(&this->renderFinishedSemaphore);
+                frameIndex++;
+            }
+        }
+
+		
 		__int64 time = timeMeasurer->elapsedMillionSecondsSinceStart();
 		double average = 1.0 * time / frameIndex;
 
