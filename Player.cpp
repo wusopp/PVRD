@@ -1000,7 +1000,9 @@ namespace Player {
 
         }
 
-
+        if (this->frameIndex == 10) {
+            saveViewport(this->viewportImageFileName.c_str());
+        }
 
         SDL_GL_SwapWindow(pWindow);
 	}

@@ -113,6 +113,15 @@ namespace Player {
 
         void saveViewport(const char *fileName);
 
+        std::string viewportImageFileName;
+
+        inline void setViewportImageFileName(const std::string &outputFileName) {
+            if (outputFileName.length() == 0) {
+                this->viewportImageFileName = "test.png";
+            }
+            this->viewportImageFileName = outputFileName;
+        }
+
 	public:
 		HGLRC mainGLRenderContext;
 		HDC mainDeviceContext;
