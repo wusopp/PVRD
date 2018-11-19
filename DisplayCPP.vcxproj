@@ -175,6 +175,7 @@
     <ClInclude Include="NV12TORGBA.h" />
     <ClInclude Include="Player.h" />
     <ClInclude Include="stb_dxt.h" />
+    <ClInclude Include="stb_image_write.h" />
     <ClInclude Include="ThirdParty\cuvid\inc\cutil_inline_runtime.h" />
     <ClInclude Include="ThirdParty\NVDecoder\FrameQueue.h" />
     <ClInclude Include="ThirdParty\NVDecoder\NvDecoder.h" />

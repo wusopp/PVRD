@@ -5,6 +5,8 @@
 #define STB_DXT_IMPLEMENTATION
 #include "stb_dxt.h"
 #include "glErrorChecker.h"
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "stb_image_write.h"
 
 static const char* TEXTURE_UNIFORMS[] = { "y_tex", "u_tex", "v_tex" };
 
@@ -106,7 +108,20 @@ namespace Player {
 		SDL_Quit();
 	}
 
-	/**
+    void Player::saveCurrentViewportToPNG(const char *fileName) {
+        if (this->projectionMode != PM_CUBEMAP && this->renderYUV != true) {
+            glBindTexture(GL_TEXTURE_2D, sceneTextureID);
+            
+
+            unsigned char *data = new unsigned char[windowWidth*windowHeight * 3];
+            glReadPixels(0, 0, windowWidth, windowHeight, GL_RGB, GL_UNSIGNED_BYTE, data);
+            stbi_write_png(fileName, windowWidth, windowHeight, 3, data, windowWidth * 3);
+
+            delete[] data;
+        }
+    }
+
+    /**
 	* Player的初始化函数
 	*/
 	bool Player::init() {
@@ -1014,7 +1029,6 @@ namespace Player {
 
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, sceneIndexBuffer);
 		glDrawElements(GL_TRIANGLES, this->indexArraySize, GL_UNSIGNED_INT, (const void *)0);
-
 		glBindVertexArray(0);
 		SDL_GL_SwapWindow(pWindow);
 		glCheckError();
