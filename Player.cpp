@@ -999,6 +999,8 @@ namespace Player {
             drawFrameCubeMap();
 
         }
+
+        SDL_GL_SwapWindow(pWindow);
 	}
 
     void Player::drawFrameCubeMap() {
@@ -1014,7 +1016,6 @@ namespace Player {
         glDrawArrays(GL_TRIANGLES, 0, 36);
         
         glBindVertexArray(0);
-        SDL_GL_SwapWindow(pWindow);
     }
 
 	void Player::drawFrameERPWithIndex() {
@@ -1040,8 +1041,7 @@ namespace Player {
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, sceneIndexBuffer);
 		glDrawElements(GL_TRIANGLES, this->indexArraySize, GL_UNSIGNED_INT, (const void *)0);
 		glBindVertexArray(0);
-		SDL_GL_SwapWindow(pWindow);
-		glCheckError();
+
 	}
 
 
@@ -1072,8 +1072,7 @@ namespace Player {
 
 		glDrawArrays(GL_TRIANGLES, 0, this->vertexCount);
 		glBindVertexArray(0);
-		SDL_GL_SwapWindow(pWindow);
-		glCheckError();
+
 	}
 
 	/**
@@ -1106,7 +1105,7 @@ namespace Player {
 		glDrawElements(GL_TRIANGLES, this->indexArraySize, GL_UNSIGNED_INT, (const void *)0);
 
 		glBindVertexArray(0);
-		SDL_GL_SwapWindow(pWindow);
+		
 		glCheckError();
 	}
 
@@ -1134,8 +1133,7 @@ namespace Player {
 		glDrawArrays(GL_TRIANGLES, 0, this->vertexCount);
 
 		glBindVertexArray(0);
-		SDL_GL_SwapWindow(pWindow);
-		glCheckError();
+
 	}
 
 	/**
@@ -1900,8 +1898,7 @@ namespace Player {
 
 		glDrawArrays(GL_TRIANGLES, 0, this->vertexVector.size() / 3);
 		glBindVertexArray(0);
-		SDL_GL_SwapWindow(pWindow);
-		glCheckError();
+
 	}
 
 	void Player::computeCppEqualDistanceUVCoordinates(float x, float y, float &u, float &v) {
