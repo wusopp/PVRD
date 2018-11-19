@@ -248,5 +248,6 @@ namespace Player {
 		std::ifstream     videoFileInputStream;
         bool              renderYUV = true;
         bool              repeatRendering = false;
+        int frameIndex = 0;
 	};
 }

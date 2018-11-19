@@ -1000,6 +1000,8 @@ namespace Player {
 
         }
 
+
+
         SDL_GL_SwapWindow(pWindow);
 	}
 
@@ -1607,7 +1609,6 @@ namespace Player {
 		assert(drawMode != DM_NOT_SPECIFIED);
 		bool bQuit = false;
 		SDL_StartTextInput();
-		int frameIndex = 0;
 		timeMeasurer->Start();
 		while (!bQuit && !allFrameRead) {
 			if (decodeOneFrame()) {
@@ -2034,7 +2035,6 @@ namespace Player {
 
 	void Player::renderLoopThread() {
 		bool bQuit = false;
-		int frameIndex = 0;
 		timeMeasurer->Start();
         
         if (this->repeatRendering) {
