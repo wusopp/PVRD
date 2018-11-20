@@ -1000,7 +1000,7 @@ namespace Player {
 
         }
 
-        if (this->frameIndex == 10) {
+        if (this->frameIndex == 0) {
             saveViewport(this->viewportImageFileName.c_str());
         }
 
