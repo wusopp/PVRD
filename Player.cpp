@@ -343,7 +343,8 @@ namespace Player {
 			this->videoFileInputStream.open(filePath, std::ios::binary | std::ios::in);
 
 			assert(this->videoFrameWidth != 0 && this->videoFrameHeight != 0);
-			this->decodedYUVBuffer = new uint8_t[this->videoFrameWidth*this->videoFrameHeight * 3 / 2];
+			//this->decodedYUVBuffer = new uint8_t[this->videoFrameWidth*this->videoFrameHeight * 3 / 2];
+            decodedYUVBuffer = (uint8_t *)av_malloc(this->videoFrameWidth*this->videoFrameHeight*3/2 * sizeof(uint8_t));
 			if (this->decodedYUVBuffer == NULL) {
 				return false;
 			} else {
