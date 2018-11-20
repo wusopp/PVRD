@@ -109,9 +109,8 @@ namespace Player {
 	}
 
     void Player::saveViewport(const char *fileName) {
-        if (this->projectionMode != PM_CUBEMAP && this->renderYUV != true) {
+        if (this->projectionMode != PM_CUBEMAP) {
             glBindTexture(GL_TEXTURE_2D, sceneTextureID);
-            
 
             unsigned char *tmp = new unsigned char[windowWidth*windowHeight * 3];
             unsigned char *data = new unsigned char[windowHeight*windowWidth * 3];
