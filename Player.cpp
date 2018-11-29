@@ -939,7 +939,7 @@ namespace Player {
 	* 根据投影格式来调用不同的渲染方法
 	*/
 	void Player::drawFrame() {
-
+        sem_wait(&(this->decodeOneFrameFinishedSemaphore));
         if (this->videoFileType == VFT_YUV) {
 
             pthread_mutex_lock(&this->lock);
@@ -1005,6 +1005,7 @@ namespace Player {
         }
 
         SDL_GL_SwapWindow(pWindow);
+        sem_post(&this->renderFinishedSemaphore);
 	}
 
     void Player::drawFrameCubeMap() {
@@ -2043,9 +2044,7 @@ namespace Player {
             while (true) {
                 while (!bQuit && !this->allFrameRead) {
                     bQuit = this->handleInput();
-                    sem_wait(&(this->decodeOneFrameFinishedSemaphore));
                     this->drawFrame();
-                    sem_post(&this->renderFinishedSemaphore);
                     frameIndex++;
                 }
                 if (bQuit) {
@@ -2055,9 +2054,7 @@ namespace Player {
         } else {
             while (!bQuit && !this->allFrameRead) {
                 bQuit = this->handleInput();
-                sem_wait(&(this->decodeOneFrameFinishedSemaphore));
                 this->drawFrame();
-                sem_post(&this->renderFinishedSemaphore);
                 frameIndex++;
             }
         }
