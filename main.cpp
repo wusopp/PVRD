@@ -67,6 +67,9 @@ void parseArguments(int argc, char *argv[]) {
                     case PM_CPP_OBSOLETE:
                         projectionMode = PM_CPP_OBSOLETE;
                         break;
+                    case PM_EAC:
+                        projectionMode = PM_EAC;
+                        break;
                     default:
                         break;
                     }
@@ -169,12 +172,9 @@ int main(int argc, char** argv) {
 	Player::Player *player = new Player::Player(frameWidth, frameHeight, patchNum);
     player->setViewportImageFileName(outputImageName);
 
-	//std::string filePath = "D:\\WangZewei\\360Video\\VRTest_1920_960.mp4";
-	//std::string filePath = "D:\\WangZewei\\YUV\\road.yuv";
-    //std::string filePath = "D:\\WangZewei\\360Video\\Cubemap_1536_1024.mp4";
-
     player->setRepeatRendering(repeatRendering);
     player->setRenderYUV(renderYUV);
+
 	player->setupMode(projectionMode, drawMode, decodeType, videoFileType);
 	player->openVideoFile(videoFileName);
 

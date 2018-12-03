@@ -39,9 +39,10 @@ extern "C"
 
 enum ProjectionMode {
 	PM_ERP = 0, // ERP格式
-    PM_CUBEMAP,
+    PM_CUBEMAP, // Cubemap格式
 	PM_CPP, // CPP格式
-    PM_CPP_OBSOLETE,
+    PM_CPP_OBSOLETE, // CPP，用ERP的方式来进行渲染
+    PM_EAC, // 谷歌提出的EAC格式
 	PM_NOT_SPECIFIED, // 未指定格式
 };
 

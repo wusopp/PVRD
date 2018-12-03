@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <LocalDebuggerCommandArguments>-patch 512 -video D:\\WangZewei\\YUV\\road.yuv -output 512_erp.png -proj 3 -draw 0 -type 0 -w 3840 -h 1920 -repeat 0 -yuv 0</LocalDebuggerCommandArguments>
+    <LocalDebuggerCommandArguments>-patch 512 -video D:\\WangZewei\\360Video\\Cubemap_1536_1024.mp4 -output 512_cpp.png -proj 1 -draw 0 -type 1 -w 1536 -h 1024 -repeat 0 -yuv 0</LocalDebuggerCommandArguments>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">

@@ -421,7 +421,7 @@ namespace Player {
 		} else if (this->projectionMode == PM_CPP) {
 			setupCppEqualDistanceCoordinates();
 			result = true;
-        } else if (this->projectionMode == PM_CUBEMAP) {
+        } else if (this->projectionMode == PM_CUBEMAP || this->projectionMode == PM_EAC) {
             setupCubeMapCoordinates();
             result = true;
         }
@@ -994,38 +994,42 @@ namespace Player {
 
 			drawFrameCppEqualDistance();
 
-        } else if (this->projectionMode == PM_CUBEMAP) {
+        } else if (this->projectionMode == PM_CUBEMAP || this->projectionMode == PM_EAC) {
 
             drawFrameCubeMap();
 
         }
 
-        if (this->frameIndex == 0) {
+        /*if (this->frameIndex == 0) {
             saveViewport(this->viewportImageFileName.c_str());
-        }
+        }*/
 
         SDL_GL_SwapWindow(pWindow);
+
         sem_post(&this->renderFinishedSemaphore);
 	}
 
     void Player::drawFrameCubeMap() {
+        glCheckError();
         glViewport(0, 0, windowWidth, windowHeight);
         glDisable(GL_DEPTH_TEST);
+
+        computeMVPMatrix();
         glUseProgram(sceneProgramID);
+
         glUniformMatrix4fv(sceneMVPMatrixPointer, 1, GL_FALSE, &mvpMatrix[0][0]);
         glBindVertexArray(sceneVAO);
         glBindBuffer(GL_ARRAY_BUFFER, sceneVertexBuffer);
         glEnableVertexAttribArray(0);
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (const void *)0);
 
-        glDrawArrays(GL_TRIANGLES, 0, 36);
-        
+        glDrawArrays(GL_TRIANGLES, 0, this->vertexCount);
+
         glBindVertexArray(0);
+        glCheckError();
     }
 
 	void Player::drawFrameERPWithIndex() {
-		/*glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);*/
 		glViewport(0, 0, windowWidth, windowHeight);
 		glDisable(GL_DEPTH_TEST);
 		glCheckError();
@@ -1150,43 +1154,46 @@ namespace Player {
 		}
 	}
 
-
 	/**
 	* 设置视频帧数据
 	*/
 	bool Player::setupTextureData(unsigned char *textureData) {
+
+        glCheckError();
 		static bool firstTime = true;
 		assert(videoFrameHeight > 0 && videoFrameWidth > 0);
 		glUseProgram(sceneProgramID);
 
         if (this->projectionMode == PM_CUBEMAP) {
+            glCheckError();
+            
             glBindTexture(GL_TEXTURE_CUBE_MAP, sceneTextureID);
-
+            glCheckError();
             // Common
             glPixelStorei(GL_UNPACK_ROW_LENGTH, videoFrameWidth);
 
-            // Facebook Transform转换出来的是3*2的，从左到右从前到后，依次是：右、左、上、下、前、后
+            // Facebook Transform转换出来的是3*2的，从左到右从上到下，依次是：右、左、上、下、前、后
             // GL_UNPACK_SKIP_PIXELS指定跳过该行的多少个像素
-            // GL_UNPACK_SKIP_ROWS指定跳过多少列(从上往下数)
+            // GL_UNPACK_SKIP_ROWS指定跳过多少行(从上往下数)
 
             // 左
-            glPixelStorei(GL_UNPACK_SKIP_PIXELS, 512);
+            glPixelStorei(GL_UNPACK_SKIP_PIXELS, videoFrameWidth/3);
             glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
             glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_X, 0, GL_RGB, 512, 512, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
 
             // 上
-            glPixelStorei(GL_UNPACK_SKIP_PIXELS, 1024);
+            glPixelStorei(GL_UNPACK_SKIP_PIXELS, videoFrameWidth/3*2);
             glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
             glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_Y, 0, GL_RGB, 512, 512, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
 
             // 下
             glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
-            glPixelStorei(GL_UNPACK_SKIP_ROWS, 512);
+            glPixelStorei(GL_UNPACK_SKIP_ROWS, videoFrameHeight / 2);
             glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, 0, GL_RGB, 512, 512, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
 
             // 前
-            glPixelStorei(GL_UNPACK_SKIP_PIXELS, 512);
-            glPixelStorei(GL_UNPACK_SKIP_ROWS, 512);
+            glPixelStorei(GL_UNPACK_SKIP_PIXELS, videoFrameWidth / 3);
+            glPixelStorei(GL_UNPACK_SKIP_ROWS, videoFrameHeight / 2);
             glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_Z, 0, GL_RGB, 512, 512, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
 
             // 右
@@ -1194,6 +1201,50 @@ namespace Player {
             glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
             glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X, 0, GL_RGB, 512, 512, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
 
+            // 后
+            glPixelStorei(GL_UNPACK_SKIP_PIXELS, videoFrameWidth / 3 * 2);
+            glPixelStorei(GL_UNPACK_SKIP_ROWS, videoFrameHeight / 2);
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_Z, 0, GL_RGB, 512, 512, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
+
+        } else if (this->projectionMode == PM_EAC) {
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_CUBE_MAP, sceneTextureID);
+            glPixelStorei(GL_UNPACK_ROW_LENGTH, videoFrameWidth);
+            glCheckError();
+            // EAC格式也是3*2的，从左到右从上到下依次是：左、前、右、下、后、上
+            
+            // 左
+            glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
+            glCheckError();
+            glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
+            glCheckError();
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_X, 0, GL_RGB, videoFrameWidth / 3, videoFrameHeight / 2, 0, GL_RGB, GL_UNSIGNED_BYTE,textureData);
+            glCheckError();
+            // 前
+            glPixelStorei(GL_UNPACK_SKIP_PIXELS, videoFrameWidth / 3);
+            glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_Z, 0, GL_RGB, videoFrameWidth / 3, videoFrameHeight / 2, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
+
+            // 右
+            glPixelStorei(GL_UNPACK_SKIP_PIXELS, videoFrameWidth / 3);
+            glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_Z, 0, GL_RGB, videoFrameWidth / 3, videoFrameHeight / 2, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
+            
+            // 下
+            glPixelStorei(GL_UNPACK_SKIP_PIXELS, videoFrameWidth / 3);
+            glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_Z, 0, GL_RGB, videoFrameWidth / 3, videoFrameHeight / 2, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
+            
+            // 后
+            glPixelStorei(GL_UNPACK_SKIP_PIXELS, videoFrameWidth / 3);
+            glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_Z, 0, GL_RGB, videoFrameWidth / 3, videoFrameHeight / 2, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
+            
+            // 上
+            glPixelStorei(GL_UNPACK_SKIP_PIXELS, videoFrameWidth / 3);
+            glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_Z, 0, GL_RGB, videoFrameWidth / 3, videoFrameHeight / 2, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
+            
         } else {
             if (this->renderYUV) {
                 unsigned char *yuvPlanes[3];
@@ -1225,9 +1276,6 @@ namespace Player {
             }
         }
 
-
-
-        
 		return true;
 	}
 
@@ -1235,7 +1283,7 @@ namespace Player {
 	* 设置投影和绘图格式
 	*/
 	void Player::setupMode(ProjectionMode projection, DrawMode draw, DecodeType decode, VideoFileType fileType) {
-		glCheckError();
+
 		this->projectionMode = projection;
 		this->drawMode = draw;
 		this->decodeType = decode;
@@ -1364,9 +1412,9 @@ namespace Player {
 
         char *VERTEX_SHADER = NULL, *FRAGMENT_SHADER = NULL;
 
-        if (this->projectionMode == PM_CUBEMAP) {
+        if (this->projectionMode == PM_CUBEMAP || this->projectionMode == PM_EAC) {
             VERTEX_SHADER =
-                "#version 330 core\n"
+                "#version 410 core\n"
                 "uniform mat4 matrix;\n"
                 "out vec3 TexCoords;\n"
                 "layout(location = 0) in vec4 position;\n"
@@ -1374,9 +1422,9 @@ namespace Player {
                 "   TexCoords = position.xyz;\n"
                 "   gl_Position = matrix * position;\n"
                 "}\n";
-
+            // texture(mytexture, TexCoords)
             FRAGMENT_SHADER =
-                "#version 330 core\n"
+                "#version 410 core\n"
                 "varying vec3 TexCoords;\n"
                 "uniform samplerCube mytexture;\n"
                 "void main() {\n"
@@ -1446,11 +1494,11 @@ namespace Player {
 	*/
 	bool Player::setupTexture() {
 		glUseProgram(sceneProgramID);
-        if (this->projectionMode == PM_CUBEMAP) {
+        if (this->projectionMode == PM_CUBEMAP || this->projectionMode == PM_EAC) {
             glGenTextures(1, &sceneTextureID);
+
             glBindTexture(GL_TEXTURE_CUBE_MAP, sceneTextureID);
             glUniform1i(glGetUniformLocation(sceneProgramID, "mytexture"), 0);
-
 
             glTexParameterf(GL_TEXTURE_CUBE_MAP,
                 GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -1460,8 +1508,8 @@ namespace Player {
                 GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
             glTexParameterf(GL_TEXTURE_CUBE_MAP,
                 GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-            glTexParameterf(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-            
+            glTexParameterf(GL_TEXTURE_CUBE_MAP, 
+                GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
 
         } else {
             if (this->decodeType == DT_SOFTWARE) {
@@ -1958,12 +2006,12 @@ namespace Player {
                         } else {
                             sws_scale(player->swsContext, (uint8_t const* const *)player->pFrame->data, player->pFrame->linesize, 0, player->pCodecContext->height, player->pFrameRGB->data, player->pFrameRGB->linesize);
 
-
                             sem_wait(&player->renderFinishedSemaphore);
 
                             pthread_mutex_lock(&player->lock);
                             //avpicture_layout((AVPicture *)player->pFrame, AV_PIX_FMT_YUV420P, player->pCodecContext->width, player->pCodecContext->height, player->decodedYUVBuffer, player->numberOfBytesPerFrame);
                             avpicture_layout((AVPicture *)player->pFrameRGB, AV_PIX_FMT_RGB24, player->pCodecContext->width, player->pCodecContext->height, player->decodedRGB24Buffer, player->numberOfBytesPerFrame);
+
                             pthread_mutex_unlock(&player->lock);
                         }
                         
