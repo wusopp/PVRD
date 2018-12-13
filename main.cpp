@@ -54,61 +54,13 @@ void parseArguments(int argc, char *argv[]) {
                     outputImageName = argv[i + 1];
                 } else if (!stricmp(argv[i], "-proj")) {
                     int value = atoi(argv[i + 1]);
-                    switch (value) {
-                    case PM_ERP:
-                        projectionMode = PM_ERP;
-                        break;
-                    case PM_CUBEMAP:
-                        projectionMode = PM_CUBEMAP;
-                        break;
-                    case PM_CPP:
-                        projectionMode = PM_CPP;
-                        break;
-                    case PM_CPP_OBSOLETE:
-                        projectionMode = PM_CPP_OBSOLETE;
-                        break;
-                    case PM_EAC:
-                        projectionMode = PM_EAC;
-                        break;
-                    default:
-                        break;
-                    }
+                    projectionMode = (ProjectionMode)value;
                 } else if (!stricmp(argv[i], "-draw")) {
                     int draw = atoi(argv[i + 1]);
-                    switch (draw) {
-                    case DM_USE_INDEX:
-                        drawMode = DM_USE_INDEX;
-                        break;
-                    case DM_DONT_USE_INDEX:
-                        drawMode = DM_DONT_USE_INDEX;
-                        break;
-                    default:
-                        break;
-                    }
+                    drawMode = (DrawMode)draw;
                 } else if (!stricmp(argv[i], "-decode")) {
                     int value = atoi(argv[i + 1]);
-                    switch (value) {
-                    case DT_SOFTWARE:
-                        decodeType = DT_SOFTWARE;
-                        break;
-                    case DT_HARDWARE:
-                        decodeType = DT_HARDWARE;
-                        break;
-                    default:
-                        break;
-                    }
-                } else if (!stricmp(argv[i], "-type")) {
-                    int type = atoi(argv[i+1]);
-                    switch (type) {
-                    case VFT_Encoded:
-                        videoFileType = VFT_Encoded;
-                        break;
-                    case VFT_YUV:
-                        videoFileType = VFT_YUV;
-                        break;
-                    default:
-                        break;
-                    }
+                    decodeType = (DecodeType)value;
                 } else if (!stricmp(argv[i], "-w")) {
                     frameWidth = atoi(argv[i + 1]);
                 } else if (!stricmp(argv[i], "-h")) {
