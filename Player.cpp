@@ -39,9 +39,7 @@ namespace Player {
         
         init();
 
-        setupShaders();
-        setupCoordinates();
-        setupTexture();
+
     }
 
     Player::~Player() {
@@ -224,11 +222,15 @@ namespace Player {
 		}
 
 
-        /*mainGLRenderContext = wglGetCurrentContext();
+        mainGLRenderContext = wglGetCurrentContext();
         mainDeviceContext = wglGetCurrentDC();
         if (!mainGLRenderContext || !mainDeviceContext) {
             return false;
-        }*/
+        }
+
+        setupShaders();
+        setupCoordinates();
+        setupTexture();
 
 		return true;
 	}
@@ -1195,68 +1197,84 @@ namespace Player {
 	* 设置视频帧数据
 	*/
 	bool Player::setupTextureData(unsigned char *textureData) {
-
-        glCheckError();
 		static bool firstTime = true;
-		assert(videoFrameHeight > 0 && videoFrameWidth > 0);
 		glUseProgram(sceneProgramID);
 
         if (this->projectionMode == PM_CUBEMAP) {
-            glCheckError();
-            
             glBindTexture(GL_TEXTURE_CUBE_MAP, sceneTextureID);
-            glCheckError();
-            // Common
             glPixelStorei(GL_UNPACK_ROW_LENGTH, videoFrameWidth);
 
             // Facebook Transform转换出来的是3*2的，从左到右从上到下，依次是：右、左、上、下、前、后
             // GL_UNPACK_SKIP_PIXELS指定跳过该行的多少个像素
             // GL_UNPACK_SKIP_ROWS指定跳过多少行(从上往下数)
 
-            // 左
-            glPixelStorei(GL_UNPACK_SKIP_PIXELS, videoFrameWidth/3);
-            glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
-            glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_X, 0, GL_RGB, 512, 512, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
+            assert(videoFrameWidth / 3 == videoFrameHeight / 2);
+            int squareWidth = videoFrameWidth / 3;     
 
-            // 上
-            glPixelStorei(GL_UNPACK_SKIP_PIXELS, videoFrameWidth/3*2);
             glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
-            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_Y, 0, GL_RGB, 512, 512, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
-
-            // 下
             glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
-            glPixelStorei(GL_UNPACK_SKIP_ROWS, videoFrameHeight / 2);
-            glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, 0, GL_RGB, 512, 512, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X, 0, GL_RGB, squareWidth, squareWidth, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
 
-            // 前
-            glPixelStorei(GL_UNPACK_SKIP_PIXELS, videoFrameWidth / 3);
-            glPixelStorei(GL_UNPACK_SKIP_ROWS, videoFrameHeight / 2);
-            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_Z, 0, GL_RGB, 512, 512, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
-
-            // 右
-            glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
             glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
-            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X, 0, GL_RGB, 512, 512, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
+            glPixelStorei(GL_UNPACK_SKIP_PIXELS, squareWidth);
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_X, 0, GL_RGB, squareWidth, squareWidth, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
 
-            // 后
-            glPixelStorei(GL_UNPACK_SKIP_PIXELS, videoFrameWidth / 3 * 2);
-            glPixelStorei(GL_UNPACK_SKIP_ROWS, videoFrameHeight / 2);
-            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_Z, 0, GL_RGB, 512, 512, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
+            glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
+            glPixelStorei(GL_UNPACK_SKIP_PIXELS, squareWidth * 2);
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_Y, 0, GL_RGB, squareWidth, squareWidth, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
 
+            glPixelStorei(GL_UNPACK_SKIP_ROWS, squareWidth);
+            glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, 0, GL_RGB, squareWidth, squareWidth, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
+
+            glPixelStorei(GL_UNPACK_SKIP_ROWS, squareWidth);
+            glPixelStorei(GL_UNPACK_SKIP_PIXELS, squareWidth);
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_Z, 0, GL_RGB, squareWidth, squareWidth, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
+
+            glPixelStorei(GL_UNPACK_SKIP_ROWS, squareWidth);
+            glPixelStorei(GL_UNPACK_SKIP_PIXELS, squareWidth * 2);
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_Z, 0, GL_RGB, squareWidth, squareWidth, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
+
+            // ------------------------------------------------------------
+
+            /*glPixelStorei(GL_UNPACK_SKIP_ROWS, squareWidth);
+            glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X, 0, GL_RGB, squareWidth, squareWidth, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
+
+            glPixelStorei(GL_UNPACK_SKIP_ROWS, squareWidth);
+            glPixelStorei(GL_UNPACK_SKIP_PIXELS, squareWidth);
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_X, 0, GL_RGB, squareWidth, squareWidth, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
+
+            glPixelStorei(GL_UNPACK_SKIP_ROWS, squareWidth);
+            glPixelStorei(GL_UNPACK_SKIP_PIXELS, squareWidth*2);
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_Y, 0, GL_RGB, squareWidth, squareWidth, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
+
+            glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
+            glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, 0, GL_RGB, squareWidth, squareWidth, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
+
+            glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
+            glPixelStorei(GL_UNPACK_SKIP_PIXELS, squareWidth);
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_Z, 0, GL_RGB, squareWidth, squareWidth, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
+
+            glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
+            glPixelStorei(GL_UNPACK_SKIP_PIXELS, squareWidth*2);
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_Z, 0, GL_RGB, squareWidth, squareWidth, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
+
+            glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+            glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
+            glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);*/
         } else if (this->projectionMode == PM_EAC) {
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_CUBE_MAP, sceneTextureID);
             glPixelStorei(GL_UNPACK_ROW_LENGTH, videoFrameWidth);
-            glCheckError();
             // EAC格式也是3*2的，从左到右从上到下依次是：左、前、右、下、后、上
             
             // 左
             glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
-            glCheckError();
             glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
-            glCheckError();
             glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_X, 0, GL_RGB, videoFrameWidth / 3, videoFrameHeight / 2, 0, GL_RGB, GL_UNSIGNED_BYTE,textureData);
-            glCheckError();
+
             // 前
             glPixelStorei(GL_UNPACK_SKIP_PIXELS, videoFrameWidth / 3);
             glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
@@ -1282,6 +1300,9 @@ namespace Player {
             glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
             glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_Z, 0, GL_RGB, videoFrameWidth / 3, videoFrameHeight / 2, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
             
+            glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+            glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
+            glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
         } else {
             if (this->renderYUV) {
                 unsigned char *yuvPlanes[3];
@@ -1548,9 +1569,11 @@ namespace Player {
             glTexParameterf(GL_TEXTURE_CUBE_MAP, 
                 GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
 
+            for (int i = 0; i < 6; i++) {
+                glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB, videoFrameWidth/3, videoFrameWidth/3, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+            }
         } else {
             if (this->decodeType == DT_SOFTWARE) {
-
                 if (this->renderYUV) {
                     glGenTextures(3, yuvTexturesID);
                     for (int i = 0; i < 3; i++) {
@@ -1565,7 +1588,6 @@ namespace Player {
                             GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
                         glTexParameterf(GL_TEXTURE_2D,
                             GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-                        
                     }
                 } else {
                     glGenTextures(1, &sceneTextureID);
