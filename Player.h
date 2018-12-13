@@ -86,14 +86,12 @@ typedef struct VertexStruct {
 namespace Player {
 	class Player {
 	public:
+        Player(int argc, char **argv);
 
-		Player(int numberOfPatches);
-
-		Player(int width, int height, int numberOfPatches = 128);
 		~Player();
 
 		// 打开视频文件, 需要指定文件路径和文件类型
-		bool openVideoFile(const std::string &filePath);
+		bool openVideo();
 
 		// 将解码出的YUV用作纹理数据, 每帧绘制前均需要设置
 		bool setupTextureData(unsigned char *textureData);
@@ -112,16 +110,12 @@ namespace Player {
             this->repeatRendering = repeatRendering;
         }
 
-        void saveViewport(const char *fileName);
+        void saveViewport();
 
-        std::string viewportImageFileName;
+        char * viewportImageFileName = NULL;
+        std::string videoFileName;
 
-        inline void setViewportImageFileName(const std::string &outputFileName) {
-            if (outputFileName.length() == 0) {
-                this->viewportImageFileName = "test.png";
-            }
-            this->viewportImageFileName = outputFileName;
-        }
+        void parseArguments(int argc, char ** argv);
 
 	public:
 		HGLRC mainGLRenderContext;
@@ -190,10 +184,10 @@ namespace Player {
 		SDL_Window *pWindow = NULL;
 		SDL_GLContext glContext;
 		TimeMeasurer *timeMeasurer = NULL;
-		ProjectionMode projectionMode = PM_NOT_SPECIFIED;
-		DrawMode drawMode = DM_NOT_SPECIFIED;
-		VideoFileType videoFileType = VFT_NOT_SPECIFIED;
-		DecodeType decodeType = DT_NOT_SPECIFIED;
+		ProjectionMode projectionMode = PM_ERP;
+		DrawMode drawMode = DM_USE_INDEX;
+		VideoFileType videoFileType = VFT_Encoded;
+		DecodeType decodeType = DT_SOFTWARE;
 
 		glm::mat4 modelMatrix;
 		glm::mat4 viewMatrix;
@@ -259,5 +253,8 @@ namespace Player {
         bool              renderYUV = true;
         bool              repeatRendering = false;
         int frameIndex = 0;
+
+
+
 	};
 }

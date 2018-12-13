@@ -24,35 +24,27 @@ void addShader(int type, const char * source, int program) {
 }
 
 namespace Player {
-	Player::Player(int numberOfPatches) :
-		pWindow(NULL),
-		glContext(NULL),
-		projectionMode(PM_NOT_SPECIFIED),
-		drawMode(DM_NOT_SPECIFIED),
-		timeMeasurer(new TimeMeasurer()),
-		vertexArray(NULL),
-		uvArray(NULL),
-		indexArray(NULL) {
-		this->patchNumber = numberOfPatches;
-		init();
-	}
 
-	Player::Player(int width, int height, int numberOfPatches) :
-		pWindow(NULL),
-		glContext(NULL),
-		projectionMode(PM_NOT_SPECIFIED),
-		drawMode(DM_NOT_SPECIFIED),
-		patchNumber(numberOfPatches),
-		timeMeasurer(new TimeMeasurer()),
-		vertexArray(NULL),
-		uvArray(NULL),
-		indexArray(NULL),
-		videoFrameWidth(width),
-		videoFrameHeight(height) {
-		init();
-	}
+    Player::Player(int argc, char **argv) :
+        pWindow(NULL),
+        glContext(NULL),
+        projectionMode(PM_NOT_SPECIFIED),
+        drawMode(DM_NOT_SPECIFIED),
+        patchNumber(128),
+        timeMeasurer(new TimeMeasurer()),
+        vertexArray(NULL),
+        uvArray(NULL),
+        indexArray(NULL) {
+        parseArguments(argc, argv);
+        
+        init();
 
-	Player::~Player() {
+        setupShaders();
+        setupCoordinates();
+        setupTexture();
+    }
+
+    Player::~Player() {
 		if (vertexArray != NULL) {
 			delete[] vertexArray;
 			vertexArray = NULL;
@@ -108,7 +100,13 @@ namespace Player {
 		SDL_Quit();
 	}
 
-    void Player::saveViewport(const char *fileName) {
+    void Player::saveViewport()
+{
+
+        if (!this->viewportImageFileName) {
+            return;
+        }
+
         if (this->projectionMode != PM_CUBEMAP) {
             glBindTexture(GL_TEXTURE_2D, sceneTextureID);
 
@@ -120,11 +118,50 @@ namespace Player {
                 memcpy(&data[i*windowWidth * 3], &tmp[(windowHeight - i-1)*windowWidth * 3], windowWidth * 3 * sizeof(unsigned char));
             }
 
-            stbi_write_png(fileName, windowWidth, windowHeight, 3, data, windowWidth * 3);
+            stbi_write_png(this->viewportImageFileName, windowWidth, windowHeight, 3, data, windowWidth * 3);
 
             delete[] tmp;
             delete[] data;
             glBindTexture(GL_TEXTURE_2D, 0);
+        }
+    }
+
+    // proj: 0-ERP, 1-CPP_Obsolete, 2-Cubemap, 3-Cpp, 4-Notspecial
+    // draw: 0-useIndex, 1-dontUseIndex
+    // type: 0-yuv, 1-encoded
+    // decode: 0-software, 1-hardware
+    // -patch 200 -video D:\\WangZewei\\360Video\\VRTest_1920_960.mp4 -output 200.png -proj 0 -draw 0 -dt 0 -type 1 -w 1920 -h 960 -repeat 0 -yuv 0
+    void Player::parseArguments(int argc, char ** argv) {
+        if (!stricmp(argv[1], "-h") || !stricmp(argv[1], "-help")) {
+            std::cout << "Arguments Format:\n-patch 200 -video D:\\WangZewei\\360Video\\VRTest_1920_960.mp4 -output 200.png -proj 0 -draw 0 -decode 0 -type 0 -w 1920 -h 960 -repeat 0 -yuv 0\n";
+        } else {
+            {
+                for (int i = 1; i < argc; i += 2) {
+                    if (!stricmp(argv[i], "-patch")) {
+                        this->patchNumber = atoi(argv[i + 1]);
+                    } else if (!stricmp(argv[i], "-video")) {
+                        this->videoFileName = argv[i + 1];
+                    } else if (!stricmp(argv[i], "-output")) {
+                        this->viewportImageFileName = argv[i + 1];
+                    } else if (!stricmp(argv[i], "-proj")) {
+                        this->projectionMode = (ProjectionMode)atoi(argv[i + 1]);
+                    } else if (!stricmp(argv[i], "-draw")) {
+                        this->drawMode = (DrawMode)atoi(argv[i + 1]);
+                    } else if (!stricmp(argv[i], "-vt")) {
+                        this->videoFileType = (VideoFileType)atoi(argv[i + 1]);
+                    } else if (!stricmp(argv[i], "-dt")) {
+                        this->decodeType = (DecodeType)atoi(argv[i + 1]);
+                    } else if (!stricmp(argv[i], "-w")) {
+                        this->videoFrameWidth = atoi(argv[i + 1]);
+                    } else if (!stricmp(argv[i], "-h")) {
+                        this->videoFrameHeight = atoi(argv[i + 1]);
+                    } else if (!stricmp(argv[i], "-repeat")) {
+                        this->repeatRendering = (atoi(argv[i + 1]) == 0 ? false : true);
+                    } else if (!stricmp(argv[i], "-yuv")) {
+                        this->renderYUV = (atoi(argv[i + 1]) == 0 ? false : true);
+                    }
+                }
+            }
         }
     }
 
@@ -187,24 +224,24 @@ namespace Player {
 		}
 
 
-		mainGLRenderContext = wglGetCurrentContext();
-		mainDeviceContext = wglGetCurrentDC();
-		if (!mainGLRenderContext || !mainDeviceContext) {
-			return false;
-		}
+        /*mainGLRenderContext = wglGetCurrentContext();
+        mainDeviceContext = wglGetCurrentDC();
+        if (!mainGLRenderContext || !mainDeviceContext) {
+            return false;
+        }*/
 
 		return true;
 	}
-	bool Player::openVideoFile(const std::string &filePath) {
-		glCheckError();
+	bool Player::openVideo()
+{
 		assert(this->videoFileType != VFT_NOT_SPECIFIED && this->decodeType != DT_NOT_SPECIFIED && this->drawMode != DM_NOT_SPECIFIED);
 
 		if (videoFileType == VFT_Encoded && decodeType == DT_SOFTWARE) {
-			if (filePath.length() == 0) {
+			if (videoFileName.length() == 0) {
 				return false;
 			}
 
-			if (avformat_open_input(&pFormatContext, filePath.c_str(), NULL, NULL) != 0) {
+			if (avformat_open_input(&pFormatContext, videoFileName.c_str(), NULL, NULL) != 0) {
 				return false;
 			}
 
@@ -212,7 +249,7 @@ namespace Player {
 				return false;
 			}
 
-			av_dump_format(pFormatContext, 0, filePath.c_str(), 0);
+			av_dump_format(pFormatContext, 0, videoFileName.c_str(), 0);
 
 			videoStreamIndex = -1;
 
@@ -305,11 +342,11 @@ namespace Player {
 		} else if (videoFileType == VFT_Encoded && decodeType == DT_HARDWARE) {
 			this->pNVDecoder = new NvDecoder();
 
-			if (filePath.length() == 0) {
+			if (videoFileName.length() == 0) {
 				return false;
 			}
 			pFormatContext = avformat_alloc_context();
-			if (avformat_open_input(&pFormatContext, filePath.c_str(), NULL, NULL) < 0) {
+			if (avformat_open_input(&pFormatContext, videoFileName.c_str(), NULL, NULL) < 0) {
 				return false;
 			}
 
@@ -340,7 +377,7 @@ namespace Player {
 
 			return true;
 		} else if (videoFileType == VFT_YUV) {
-			this->videoFileInputStream.open(filePath, std::ios::binary | std::ios::in);
+			this->videoFileInputStream.open(videoFileName, std::ios::binary | std::ios::in);
 
 			assert(this->videoFrameWidth != 0 && this->videoFrameHeight != 0);
 			//this->decodedYUVBuffer = new uint8_t[this->videoFrameWidth*this->videoFrameHeight * 3 / 2];
