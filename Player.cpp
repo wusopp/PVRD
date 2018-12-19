@@ -141,7 +141,7 @@ namespace Player {
                         this->videoFileName = argv[i + 1];
                     } else if (!stricmp(argv[i], "-output")) {
                         this->viewportImageFileName = argv[i + 1];
-                    } else if (!stricmp(argv[i], "-proj")) {
+                    } else if (!stricmp(argv[i], "-pm")) {
                         this->projectionMode = (ProjectionMode)atoi(argv[i + 1]);
                     } else if (!stricmp(argv[i], "-draw")) {
                         this->drawMode = (DrawMode)atoi(argv[i + 1]);
@@ -236,7 +236,7 @@ namespace Player {
 	}
 	bool Player::openVideo()
 {
-		assert(this->videoFileType != VFT_NOT_SPECIFIED && this->decodeType != DT_NOT_SPECIFIED && this->drawMode != DM_NOT_SPECIFIED);
+ 		assert(this->videoFileType != VFT_NOT_SPECIFIED && this->decodeType != DT_NOT_SPECIFIED && this->drawMode != DM_NOT_SPECIFIED);
 
 		if (videoFileType == VFT_Encoded && decodeType == DT_SOFTWARE) {
 			if (videoFileName.length() == 0) {
@@ -1039,9 +1039,6 @@ namespace Player {
 
         }
 
-        /*if (this->frameIndex == 0) {
-            saveViewport(this->viewportImageFileName.c_str());
-        }*/
 
         SDL_GL_SwapWindow(pWindow);
 
@@ -1234,71 +1231,40 @@ namespace Player {
             glPixelStorei(GL_UNPACK_SKIP_ROWS, squareWidth);
             glPixelStorei(GL_UNPACK_SKIP_PIXELS, squareWidth * 2);
             glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_Z, 0, GL_RGB, squareWidth, squareWidth, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
-
-            // ------------------------------------------------------------
-
-            /*glPixelStorei(GL_UNPACK_SKIP_ROWS, squareWidth);
-            glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
-            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X, 0, GL_RGB, squareWidth, squareWidth, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
-
-            glPixelStorei(GL_UNPACK_SKIP_ROWS, squareWidth);
-            glPixelStorei(GL_UNPACK_SKIP_PIXELS, squareWidth);
-            glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_X, 0, GL_RGB, squareWidth, squareWidth, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
-
-            glPixelStorei(GL_UNPACK_SKIP_ROWS, squareWidth);
-            glPixelStorei(GL_UNPACK_SKIP_PIXELS, squareWidth*2);
-            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_Y, 0, GL_RGB, squareWidth, squareWidth, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
-
-            glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
-            glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
-            glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, 0, GL_RGB, squareWidth, squareWidth, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
-
-            glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
-            glPixelStorei(GL_UNPACK_SKIP_PIXELS, squareWidth);
-            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_Z, 0, GL_RGB, squareWidth, squareWidth, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
-
-            glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
-            glPixelStorei(GL_UNPACK_SKIP_PIXELS, squareWidth*2);
-            glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_Z, 0, GL_RGB, squareWidth, squareWidth, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
-
-            glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
-            glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
-            glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);*/
         } else if (this->projectionMode == PM_EAC) {
-            glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_CUBE_MAP, sceneTextureID);
             glPixelStorei(GL_UNPACK_ROW_LENGTH, videoFrameWidth);
-            // EAC格式也是3*2的，从左到右从上到下依次是：左、前、右、下、后、上
+
             
-            // 左
+            // EAC格式也是3*2的，从左到右从上到下依次是：
+            // 左、前、右、下、后、上(Transform360)
+            // 右、上、后、左、前、下(360tools)
+
+            int width = videoFrameWidth / 3;
+            
+            glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
             glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
-            glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
-            glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_X, 0, GL_RGB, videoFrameWidth / 3, videoFrameHeight / 2, 0, GL_RGB, GL_UNSIGNED_BYTE,textureData);
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X, 0, GL_RGB, width, width, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
 
-            // 前
-            glPixelStorei(GL_UNPACK_SKIP_PIXELS, videoFrameWidth / 3);
             glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
-            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_Z, 0, GL_RGB, videoFrameWidth / 3, videoFrameHeight / 2, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
+            glPixelStorei(GL_UNPACK_SKIP_PIXELS, width);
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_Y, 0, GL_RGB, width, width, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
 
-            // 右
-            glPixelStorei(GL_UNPACK_SKIP_PIXELS, videoFrameWidth / 3);
             glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
-            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_Z, 0, GL_RGB, videoFrameWidth / 3, videoFrameHeight / 2, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
-            
-            // 下
-            glPixelStorei(GL_UNPACK_SKIP_PIXELS, videoFrameWidth / 3);
-            glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
-            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_Z, 0, GL_RGB, videoFrameWidth / 3, videoFrameHeight / 2, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
-            
-            // 后
-            glPixelStorei(GL_UNPACK_SKIP_PIXELS, videoFrameWidth / 3);
-            glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
-            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_Z, 0, GL_RGB, videoFrameWidth / 3, videoFrameHeight / 2, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
-            
-            // 上
-            glPixelStorei(GL_UNPACK_SKIP_PIXELS, videoFrameWidth / 3);
-            glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
-            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_Z, 0, GL_RGB, videoFrameWidth / 3, videoFrameHeight / 2, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
+            glPixelStorei(GL_UNPACK_SKIP_PIXELS, width * 2);
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_Z, 0, GL_RGB, width, width, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
+
+            glPixelStorei(GL_UNPACK_SKIP_ROWS, width);
+            glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_X, 0, GL_RGB, width, width, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
+
+            glPixelStorei(GL_UNPACK_SKIP_ROWS, width);
+            glPixelStorei(GL_UNPACK_SKIP_PIXELS, width);
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_Z, 0, GL_RGB, width, width, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
+
+            glPixelStorei(GL_UNPACK_SKIP_ROWS, width);
+            glPixelStorei(GL_UNPACK_SKIP_PIXELS, width * 2);
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, 0, GL_RGB, width, width, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
             
             glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
             glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
@@ -1470,7 +1436,7 @@ namespace Player {
 
         char *VERTEX_SHADER = NULL, *FRAGMENT_SHADER = NULL;
 
-        if (this->projectionMode == PM_CUBEMAP || this->projectionMode == PM_EAC) {
+        if (this->projectionMode == PM_CUBEMAP || this->projectionMode == PM_EAC || this->projectionMode == PM_ACP) {
             VERTEX_SHADER =
                 "#version 410 core\n"
                 "uniform mat4 matrix;\n"
@@ -1552,7 +1518,7 @@ namespace Player {
 	*/
 	bool Player::setupTexture() {
 		glUseProgram(sceneProgramID);
-        if (this->projectionMode == PM_CUBEMAP || this->projectionMode == PM_EAC) {
+        if (this->projectionMode == PM_CUBEMAP || this->projectionMode == PM_EAC || this->projectionMode == PM_ACP) {
             glGenTextures(1, &sceneTextureID);
 
             glBindTexture(GL_TEXTURE_CUBE_MAP, sceneTextureID);
@@ -2051,39 +2017,79 @@ namespace Player {
 		std::cout << "decodeFunc" << std::endl;
 		Player *player = (Player *)args;
 		if (player->videoFileType == VFT_Encoded && player->decodeType == DT_SOFTWARE) {
-			while (av_read_frame(player->pFormatContext, &player->packet) >= 0) {
-				if (player->packet.stream_index == player->videoStreamIndex) {
-					avcodec_decode_video2(player->pCodecContext, player->pFrame, &player->frameFinished, &player->packet);
-					if (player->frameFinished) {
-                        if (player->renderYUV) {
-                            sem_wait(&player->renderFinishedSemaphore);
 
-                            pthread_mutex_lock(&player->lock);
-                            avpicture_layout((AVPicture *)player->pFrame, AV_PIX_FMT_YUV420P, player->pCodecContext->width, player->pCodecContext->height, player->decodedYUVBuffer, player->numberOfBytesPerFrame);
-                            pthread_mutex_unlock(&player->lock);
+            if (player->repeatRendering) {
 
-                        } else {
-                            sws_scale(player->swsContext, (uint8_t const* const *)player->pFrame->data, player->pFrame->linesize, 0, player->pCodecContext->height, player->pFrameRGB->data, player->pFrameRGB->linesize);
+                while (true) {
+                    while (av_read_frame(player->pFormatContext, &player->packet) >= 0) {
+                        if (player->packet.stream_index == player->videoStreamIndex) {
+                            avcodec_decode_video2(player->pCodecContext, player->pFrame, &player->frameFinished, &player->packet);
+                            if (player->frameFinished) {
+                                if (player->renderYUV) {
+                                    sem_wait(&player->renderFinishedSemaphore);
 
-                            sem_wait(&player->renderFinishedSemaphore);
+                                    pthread_mutex_lock(&player->lock);
+                                    avpicture_layout((AVPicture *)player->pFrame, AV_PIX_FMT_YUV420P, player->pCodecContext->width, player->pCodecContext->height, player->decodedYUVBuffer, player->numberOfBytesPerFrame);
+                                    pthread_mutex_unlock(&player->lock);
 
-                            pthread_mutex_lock(&player->lock);
-                            //avpicture_layout((AVPicture *)player->pFrame, AV_PIX_FMT_YUV420P, player->pCodecContext->width, player->pCodecContext->height, player->decodedYUVBuffer, player->numberOfBytesPerFrame);
-                            avpicture_layout((AVPicture *)player->pFrameRGB, AV_PIX_FMT_RGB24, player->pCodecContext->width, player->pCodecContext->height, player->decodedRGB24Buffer, player->numberOfBytesPerFrame);
+                                } else {
+                                    sws_scale(player->swsContext, (uint8_t const* const *)player->pFrame->data, player->pFrame->linesize, 0, player->pCodecContext->height, player->pFrameRGB->data, player->pFrameRGB->linesize);
 
-                            pthread_mutex_unlock(&player->lock);
+                                    sem_wait(&player->renderFinishedSemaphore);
+
+                                    pthread_mutex_lock(&player->lock);
+                                    //avpicture_layout((AVPicture *)player->pFrame, AV_PIX_FMT_YUV420P, player->pCodecContext->width, player->pCodecContext->height, player->decodedYUVBuffer, player->numberOfBytesPerFrame);
+                                    avpicture_layout((AVPicture *)player->pFrameRGB, AV_PIX_FMT_RGB24, player->pCodecContext->width, player->pCodecContext->height, player->decodedRGB24Buffer, player->numberOfBytesPerFrame);
+
+                                    pthread_mutex_unlock(&player->lock);
+                                }
+
+                                av_free_packet(&player->packet);
+
+                                sem_post(&player->decodeOneFrameFinishedSemaphore);
+                            }
                         }
-                        
-						av_free_packet(&player->packet);
+                    }
+                    av_seek_frame(player->pFormatContext, -1, 0, AVSEEK_FLAG_BACKWARD);
+                }
+                
+            } else {
+                while (av_read_frame(player->pFormatContext, &player->packet) >= 0) {
+                    if (player->packet.stream_index == player->videoStreamIndex) {
+                        avcodec_decode_video2(player->pCodecContext, player->pFrame, &player->frameFinished, &player->packet);
+                        if (player->frameFinished) {
+                            if (player->renderYUV) {
+                                sem_wait(&player->renderFinishedSemaphore);
 
-						sem_post(&player->decodeOneFrameFinishedSemaphore);
-					}
-				}
-			} 
-			player->allFrameRead = true;
-			sem_post(&player->decodeAllFramesFinishedSemaphore);
-			std::cout << "decodeAllFramesFinished" << std::endl;
-			pthread_exit(NULL);
+                                pthread_mutex_lock(&player->lock);
+                                avpicture_layout((AVPicture *)player->pFrame, AV_PIX_FMT_YUV420P, player->pCodecContext->width, player->pCodecContext->height, player->decodedYUVBuffer, player->numberOfBytesPerFrame);
+                                pthread_mutex_unlock(&player->lock);
+
+                            } else {
+                                sws_scale(player->swsContext, (uint8_t const* const *)player->pFrame->data, player->pFrame->linesize, 0, player->pCodecContext->height, player->pFrameRGB->data, player->pFrameRGB->linesize);
+
+                                sem_wait(&player->renderFinishedSemaphore);
+
+                                pthread_mutex_lock(&player->lock);
+                                //avpicture_layout((AVPicture *)player->pFrame, AV_PIX_FMT_YUV420P, player->pCodecContext->width, player->pCodecContext->height, player->decodedYUVBuffer, player->numberOfBytesPerFrame);
+                                avpicture_layout((AVPicture *)player->pFrameRGB, AV_PIX_FMT_RGB24, player->pCodecContext->width, player->pCodecContext->height, player->decodedRGB24Buffer, player->numberOfBytesPerFrame);
+
+                                pthread_mutex_unlock(&player->lock);
+                            }
+
+                            av_free_packet(&player->packet);
+
+                            sem_post(&player->decodeOneFrameFinishedSemaphore);
+                        }
+                    }
+                }
+                player->allFrameRead = true;
+                sem_post(&player->decodeAllFramesFinishedSemaphore);
+                std::cout << "decodeAllFramesFinished" << std::endl;
+                pthread_exit(NULL);
+            }
+
+			
 		} else if (player->videoFileType == VFT_Encoded && player->decodeType == DT_HARDWARE) {
 			while (true) {
 				int readSuccess = av_read_frame(player->pFormatContext, &player->packet);
