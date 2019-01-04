@@ -480,6 +480,9 @@ namespace Player {
         } else if (this->projectionMode == PM_CUBEMAP || this->projectionMode == PM_EAC || this->projectionMode == PM_ACP) {
             setupCubeMapCoordinates();
             result = true;
+        } else if (this->projectionMode == PM_TSP) {
+            setupTSPCoordinates();
+            result = true;
         }
 		return result;
 	}
@@ -543,8 +546,186 @@ namespace Player {
         return true;
     }
 
+    void Player::calculateTSPTextureCoordinates(int faceWidth, int face_idx, int i, int j, float &x, float &y, float &z, float &u, float &v) {
+        FACE_INDEX idx = (FACE_INDEX)face_idx;
+        int halfWidth = faceWidth / 2;
 
-	bool Player::setupERPCoordinatesWithIndex() {
+        switch (idx) {
+        case FACE_INDEX_FRONT:
+        {
+            z = 1.0f;
+            x = i * 1.0 / halfWidth;
+            y = j * 1.0 / halfWidth;
+
+            i += halfWidth;
+            j += halfWidth;
+
+            float s = i * 1.0 / faceWidth;
+            float t = j * 1.0 / faceWidth;
+
+            u = s / 2.0f;
+            v = t;
+        }
+        break;
+        case FACE_INDEX_BACK:
+        {
+            z = -1.0f;
+            x = -i * 1.0 / halfWidth;
+            y = j * 1.0 / halfWidth;
+
+            i += halfWidth;
+            j += halfWidth;
+
+            float s = i * 1.0 / faceWidth;
+            float t = j * 1.0 / faceWidth;
+
+            u = 0.125 * s + 0.6875;
+            v = 0.25 * t + 0.375;
+        }
+        break;
+        case FACE_INDEX_TOP:
+        {
+            y = 1.0f;
+
+            x = i * 1.0 / halfWidth;
+            z = -j * 1.0 / halfWidth;
+
+            i += halfWidth;
+            j += halfWidth;
+
+            float s = i * 1.0 / faceWidth;
+            float t = j * 1.0 / faceWidth;
+
+            u = 1.0 - 0.1875 * t - 0.5 * s + 0.375 * s * t;
+            v = 1.0 - 0.375 * t;
+        }
+        break;
+        case FACE_INDEX_BOTTOM:
+        {
+            y = -1.0f;
+
+            x = i * 1.0 / halfWidth;
+            z = j * 1.0 / halfWidth;
+
+            i += halfWidth;
+            j += halfWidth;
+
+            float s = i * 1.0 / faceWidth;
+            float t = j * 1.0 / faceWidth;
+
+            u = 0.1875 * t - 0.375 * s * t - 0.125 * s + 0.8125;
+            v = 0.375 - 0.375* t;
+        }
+
+        break;
+        case FACE_INDEX_RIGHT:
+        {
+            x = 1.0f;
+
+            z = -i * 1.0 / halfWidth;
+            y = j * 1.0 / halfWidth;
+
+            i += halfWidth;
+            j += halfWidth;
+
+            float s = i * 1.0 / faceWidth;
+            float t = j * 1.0 / faceWidth;
+
+            u = 0.1875 * s + 0.5;
+            v = 0.375 * s - 0.75 * s * t + t;
+        }
+        break;
+        case FACE_INDEX_LEFT:
+        {
+            x = -1.0f;
+
+            z = i * 1.0 / halfWidth;
+            y = j * 1.0 / halfWidth;
+
+            i += halfWidth;
+            j += halfWidth;
+
+            float s = i * 1.0 / faceWidth;
+            float t = j * 1.0 / faceWidth;
+
+            u = 0.1875 * s + 0.8125;
+            v = 0.25 * t + 0.75 * s * t - 0.375 * s + 0.375;
+
+        }
+        break;
+        default:
+            break;
+        }
+
+        v = 1 - v;
+    }
+
+    void Player::setupTSPCoordinates() {
+
+        float x, y, z, u, v;
+
+        int horizontalPatch = 10;
+        int verticalPatch = horizontalPatch;
+
+
+        if (this->vertexVector.size() > 0) {
+            this->vertexVector.clear();
+        }
+
+        if (this->uvVector.size() > 0) {
+            this->uvVector.clear();
+        }
+
+        for (int face_idx = 0; face_idx < 6; face_idx++) {
+
+            for (int i = -horizontalPatch / 2; i < horizontalPatch / 2; i++) {
+                for (int j = -verticalPatch / 2; j < verticalPatch / 2; j++) {
+                    calculateTSPTextureCoordinates(horizontalPatch, face_idx, i, j, x, y, z, u, v);
+                    addVertexData(x, y, z, u, v, vertexVector, uvVector);
+
+                    
+                    calculateTSPTextureCoordinates(horizontalPatch, face_idx, i, j + 1, x, y, z, u, v);
+                    addVertexData(x, y, z, u, v, vertexVector, uvVector);
+
+                    calculateTSPTextureCoordinates(horizontalPatch, face_idx, i + 1, j + 1, x, y, z, u, v);
+                    addVertexData(x, y, z, u, v, vertexVector, uvVector);
+
+                    calculateTSPTextureCoordinates(horizontalPatch, face_idx, i + 1, j + 1, x, y, z, u, v);
+                    addVertexData(x, y, z, u, v, vertexVector, uvVector);
+
+                    calculateTSPTextureCoordinates(horizontalPatch, face_idx, i + 1, j, x, y, z, u, v);
+                    addVertexData(x, y, z, u, v, vertexVector, uvVector);
+
+                    calculateTSPTextureCoordinates(horizontalPatch, face_idx, i, j, x, y, z, u, v);
+                    addVertexData(x, y, z, u, v, vertexVector, uvVector);
+                }
+            }
+        }
+
+        vertexCount = vertexVector.size() / 3;
+
+        glGenVertexArrays(1, &sceneVAO);
+        glBindVertexArray(sceneVAO);
+
+        int vertexBufferSize = this->vertexCount * 3 * sizeof(float);
+        int uvBufferSize = this->vertexCount * 2 * sizeof(float);
+
+        glGenBuffers(1, &sceneVertexBuffer);
+        glBindBuffer(GL_ARRAY_BUFFER, sceneVertexBuffer);
+        glBufferData(GL_ARRAY_BUFFER, vertexBufferSize, &this->vertexVector[0], GL_STATIC_DRAW);
+
+        glGenBuffers(1, &sceneUVBuffer);
+        glBindBuffer(GL_ARRAY_BUFFER, sceneUVBuffer);
+        glBufferData(GL_ARRAY_BUFFER, uvBufferSize, &this->uvVector[0], GL_STATIC_DRAW);
+
+
+        glBindVertexArray(0);
+        glCheckError();
+        
+    }
+
+
+    bool Player::setupERPCoordinatesWithIndex() {
 		glCheckError();
 
 		int radius = 10;
@@ -1054,6 +1235,10 @@ namespace Player {
 
             drawFrameCubeMap();
 
+        } else if (this->projectionMode == PM_TSP) {
+            
+            drawFrameTSP();
+
         }
 
 
@@ -1061,6 +1246,32 @@ namespace Player {
 
         sem_post(&this->renderFinishedSemaphore);
 	}
+
+
+    void Player::drawFrameTSP() {
+        glViewport(0, 0, windowWidth, windowHeight);
+        glDisable(GL_DEPTH_TEST);
+        glCheckError();
+        computeMVPMatrix();
+        glUseProgram(sceneProgramID);
+
+        glUniformMatrix4fv(sceneMVPMatrixPointer, 1, GL_FALSE, &mvpMatrix[0][0]);
+        glBindVertexArray(sceneVAO);
+
+        glBindBuffer(GL_ARRAY_BUFFER, sceneVertexBuffer);
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (const void *)0);
+
+        glBindBuffer(GL_ARRAY_BUFFER, sceneUVBuffer);
+        glEnableVertexAttribArray(1);
+        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, (const void *)0);
+
+        glDrawArrays(GL_TRIANGLES, 0, vertexCount);
+
+        glBindVertexArray(0);
+        glCheckError();
+    }
+
 
     void Player::drawFrameCubeMap() {
         glCheckError();
@@ -1327,6 +1538,9 @@ namespace Player {
                 /*unsigned int size = ((videoFrameWidth + 3) / 4)*((videoFrameHeight + 3) / 4) * 8;
                 glCompressedTexImage2D(GL_TEXTURE_2D, 0, GL_COMPRESSED_RGBA_S3TC_DXT1_EXT, videoFrameWidth, videoFrameHeight, 0, size, compressedTextureBuffer);*/
             }
+        } else if (this->projectionMode == PM_TSP) {
+            glBindTexture(GL_TEXTURE_2D, sceneTextureID);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, videoFrameWidth, videoFrameHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
         }
 
 		return true;
@@ -1483,7 +1697,7 @@ namespace Player {
                 "void main() {\n"
                 "   gl_FragColor = texture(mytexture, TexCoords);\n"
                 "}\n";
-        } else {
+        } else if (this->projectionMode == PM_ERP) {
             VERTEX_SHADER =
                 "#version 410 core\n"
                 "uniform mat4 matrix;\n"
@@ -1521,6 +1735,27 @@ namespace Player {
                     "	gl_FragColor = texture(mytexture,uvCoordsOut);\n"
                     "}\n";
             }
+        } else if (this->projectionMode == PM_TSP) {
+            VERTEX_SHADER =
+                "#version 410 core\n"
+                "uniform mat4 matrix;\n"
+                "layout(location = 0) in vec4 position;\n"
+                "layout(location = 1) in vec2 uvCoords;\n"
+                "out vec2 uvCoordsOut;\n"
+                "void main() {\n"
+                "	uvCoordsOut = uvCoords;\n"
+                "	gl_Position = matrix * position;\n"
+                "}\n";
+
+            FRAGMENT_SHADER =
+                "#version 410 core\n"
+                "uniform sampler2D mytexture;\n"
+                "in vec2 uvCoordsOut;\n"
+                "out vec4 outputColor;\n"
+                "void main() {\n"
+                "	outputColor = texture(mytexture,uvCoordsOut);\n"
+                //"   outputColor = vec4(uvCoordsOut.x, uvCoordsOut.y, 1.0, 1.0);\n"
+                "}\n";
         }
 
 		addShader(GL_VERTEX_SHADER, VERTEX_SHADER, sceneProgramID);
@@ -1567,7 +1802,7 @@ namespace Player {
             for (int i = 0; i < 6; i++) {
                 glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB, videoFrameWidth/3, videoFrameWidth/3, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
             }
-        } else {
+        } else if(this->projectionMode == PM_ERP){
             if (this->decodeType == DT_SOFTWARE) {
                 if (this->renderYUV) {
                     glGenTextures(3, yuvTexturesID);
@@ -1623,6 +1858,20 @@ namespace Player {
 
                 //glBindTexture(GL_TEXTURE_2D, 0);
             }
+        } else if (this->projectionMode == PM_TSP) {
+            glCheckError();
+            glGenTextures(1, &sceneTextureID);
+            glUniform1i(glGetUniformLocation(sceneProgramID, "mytexture"), 0);
+            glBindTexture(GL_TEXTURE_2D, sceneTextureID);
+            glTexParameterf(GL_TEXTURE_2D,
+                GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameterf(GL_TEXTURE_2D,
+                GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            glTexParameterf(GL_TEXTURE_2D,
+                GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            glTexParameterf(GL_TEXTURE_2D,
+                GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+            //glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, videoFrameWidth, videoFrameHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
         }
 
 		glUseProgram(0);
@@ -1706,7 +1955,9 @@ namespace Player {
 		}
 	}
 
-	/**
+    
+
+    /**
 	* Ö÷äÖÈ¾Ñ­»·
 	*/
 	void Player::renderLoop() {

@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <LocalDebuggerCommandArguments>-video 360tools_eac_1800x1200_30Hz_P420_10s.mp4 -pm 4 -draw 0 -dt 0 -vt 1 -w 1800 -h 1200 -repeat 1 -yuv 0</LocalDebuggerCommandArguments>
+    <LocalDebuggerCommandArguments>-video 360tools_tsp_1920x960_30Hz_P420_10s.mp4 -pm 6 -draw 0 -dt 0 -vt 1 -w 1920  -h 960 -repeat 1 -yuv 0</LocalDebuggerCommandArguments>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">

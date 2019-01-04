@@ -36,7 +36,6 @@ extern "C"
 #pragma comment (lib, "swscale.lib")
 };
 
-
 enum ProjectionMode {
 	PM_ERP = 0, // ERP格式
     PM_CUBEMAP = 1, // Cubemap格式
@@ -44,6 +43,7 @@ enum ProjectionMode {
     PM_CPP_OBSOLETE = 3, // CPP，用ERP的方式来进行渲染
     PM_EAC = 4, // 谷歌提出的EAC格式
     PM_ACP = 5,
+    PM_TSP = 6,
 	PM_NOT_SPECIFIED, // 未指定格式
 };
 
@@ -65,13 +65,13 @@ enum DecodeType {
 	DT_NOT_SPECIFIED
 };
 
-enum CubemapFaceDirection {
-    CubemapFaceDirection_Right = 0,
-    CubemapFaceDirection_Left,
-    CubemapFaceDirection_Top,
-    CubemapFaceDirection_Bottom,
-    CubemapFaceDirection_Front,
-    CubemapFaceDirection_Back  
+enum FACE_INDEX {
+    FACE_INDEX_FRONT = 0,
+    FACE_INDEX_BACK = 1,
+    FACE_INDEX_TOP = 2,
+    FACE_INDEX_BOTTOM = 3,
+    FACE_INDEX_LEFT = 4,
+    FACE_INDEX_RIGHT = 5
 };
 
 typedef struct VertexStruct {
@@ -139,6 +139,19 @@ namespace Player {
 		void computeMVPMatrix();
 		void computeViewMatrix();
 		bool decodeOneFrame();
+
+    private:
+        void setupTSPCoordinates();
+
+        void calculateTSPTextureCoordinates(int faceWidth, int face_idx, int i, int j, float &x, float &y, float &z, float &u, float &v);
+        void addVertexData(float x, float y, float z, float u, float v, std::vector<float> &vertexVector, std::vector<float> &uvVector) {
+            vertexVector.push_back(x);
+            vertexVector.push_back(y);
+            vertexVector.push_back(z);
+            uvVector.push_back(u);
+            uvVector.push_back(v);
+        }
+        void drawFrameTSP();
 
     private:
         bool setupCubeMapCoordinates();
