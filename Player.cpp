@@ -91,6 +91,16 @@ namespace Player {
 			delete pNVDecoder;
 			pNVDecoder = NULL;
 		}
+        if (rightFaceBuffer) {
+            free(rightFaceBuffer);
+            rightFaceBuffer = NULL;
+        }
+
+        // 可能造成内存泄漏
+        //if (upFaceBuffer) {
+        //    free(upFaceBuffer);
+        //    upFaceBuffer = NULL;
+        //}
 
 		destroyGL();
 		destroyCodec();
@@ -159,6 +169,13 @@ namespace Player {
                         this->renderYUV = (atoi(argv[i + 1]) == 0 ? false : true);
                     }
                 }
+            }
+
+            if (this->projectionMode == PM_EAC || this->projectionMode == PM_ACP) {
+                int width = this->videoFrameWidth / 3;
+                this->rightFaceBuffer = (uint8_t *)malloc(sizeof(uint8_t)*width*width * 3);
+                this->upFaceBuffer = (uint8_t *)malloc(sizeof(uint8_t)*width*width * 3);
+
             }
         }
     }
@@ -460,7 +477,7 @@ namespace Player {
 		} else if (this->projectionMode == PM_CPP) {
 			setupCppEqualDistanceCoordinates();
 			result = true;
-        } else if (this->projectionMode == PM_CUBEMAP || this->projectionMode == PM_EAC) {
+        } else if (this->projectionMode == PM_CUBEMAP || this->projectionMode == PM_EAC || this->projectionMode == PM_ACP) {
             setupCubeMapCoordinates();
             result = true;
         }
@@ -1201,62 +1218,24 @@ namespace Player {
             glBindTexture(GL_TEXTURE_CUBE_MAP, sceneTextureID);
             glPixelStorei(GL_UNPACK_ROW_LENGTH, videoFrameWidth);
 
-            // Facebook Transform转换出来的是3*2的，从左到右从上到下，依次是：右、左、上、下、前、后
-            // GL_UNPACK_SKIP_PIXELS指定跳过该行的多少个像素
-            // GL_UNPACK_SKIP_ROWS指定跳过多少行(从上往下数)
-
             assert(videoFrameWidth / 3 == videoFrameHeight / 2);
-            int squareWidth = videoFrameWidth / 3;     
+            int width = videoFrameWidth / 3;     
 
-            glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
-            glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
-            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X, 0, GL_RGB, squareWidth, squareWidth, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
-
-            glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
-            glPixelStorei(GL_UNPACK_SKIP_PIXELS, squareWidth);
-            glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_X, 0, GL_RGB, squareWidth, squareWidth, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
-
-            glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
-            glPixelStorei(GL_UNPACK_SKIP_PIXELS, squareWidth * 2);
-            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_Y, 0, GL_RGB, squareWidth, squareWidth, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
-
-            glPixelStorei(GL_UNPACK_SKIP_ROWS, squareWidth);
-            glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
-            glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, 0, GL_RGB, squareWidth, squareWidth, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
-
-            glPixelStorei(GL_UNPACK_SKIP_ROWS, squareWidth);
-            glPixelStorei(GL_UNPACK_SKIP_PIXELS, squareWidth);
-            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_Z, 0, GL_RGB, squareWidth, squareWidth, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
-
-            glPixelStorei(GL_UNPACK_SKIP_ROWS, squareWidth);
-            glPixelStorei(GL_UNPACK_SKIP_PIXELS, squareWidth * 2);
-            glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_Z, 0, GL_RGB, squareWidth, squareWidth, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
-        } else if (this->projectionMode == PM_EAC) {
-            glBindTexture(GL_TEXTURE_CUBE_MAP, sceneTextureID);
-            glPixelStorei(GL_UNPACK_ROW_LENGTH, videoFrameWidth);
-
-            
-            // EAC格式也是3*2的，从左到右从上到下依次是：
-            // 左、前、右、下、后、上(Transform360)
-            // 右、上、后、左、前、下(360tools)
-
-            int width = videoFrameWidth / 3;
-            
             glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
             glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
             glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X, 0, GL_RGB, width, width, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
 
             glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
             glPixelStorei(GL_UNPACK_SKIP_PIXELS, width);
-            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_Y, 0, GL_RGB, width, width, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_X, 0, GL_RGB, width, width, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
 
             glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
             glPixelStorei(GL_UNPACK_SKIP_PIXELS, width * 2);
-            glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_Z, 0, GL_RGB, width, width, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_Y, 0, GL_RGB, width, width, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
 
             glPixelStorei(GL_UNPACK_SKIP_ROWS, width);
             glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
-            glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_X, 0, GL_RGB, width, width, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, 0, GL_RGB, width, width, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
 
             glPixelStorei(GL_UNPACK_SKIP_ROWS, width);
             glPixelStorei(GL_UNPACK_SKIP_PIXELS, width);
@@ -1264,12 +1243,62 @@ namespace Player {
 
             glPixelStorei(GL_UNPACK_SKIP_ROWS, width);
             glPixelStorei(GL_UNPACK_SKIP_PIXELS, width * 2);
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_Z, 0, GL_RGB, width, width, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
+        } else if (this->projectionMode == PM_EAC || this->projectionMode == PM_ACP) {
+            glBindTexture(GL_TEXTURE_CUBE_MAP, sceneTextureID);
+            glPixelStorei(GL_UNPACK_ROW_LENGTH, videoFrameWidth);
+
+            int width = videoFrameWidth / 3;
+            int height = width;
+
+            glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
+            glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_Z, 0, GL_RGB, width, width, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
+
+            glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
+            glPixelStorei(GL_UNPACK_SKIP_PIXELS, width);
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_X, 0, GL_RGB, width, width, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
+
+            glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
+            glPixelStorei(GL_UNPACK_SKIP_PIXELS, width * 2);
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_Z, 0, GL_RGB, width, width, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
+
+            glPixelStorei(GL_UNPACK_SKIP_ROWS, width);
+            glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
             glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, 0, GL_RGB, width, width, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
-            
-            glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+
+            uint8_t *start = textureData + videoFrameWidth * height * 3 + width * 3;
+
+            for (int j = 0; j < height; j++) {
+                for (int i = 0; i < width; i++) {
+                    rightFaceBuffer[((width - 1 - i) * width + j) * 3 + 0] = *(start + i * 3 + 0);
+                    rightFaceBuffer[((width - 1 - i) * width + j) * 3 + 1] = *(start + i * 3 + 1);
+                    rightFaceBuffer[((width - 1 - i) * width + j) * 3 + 2] = *(start + i * 3 + 2);
+                }
+                start += videoFrameWidth * 3;
+            }
+
+            glPixelStorei(GL_UNPACK_ROW_LENGTH, width);
+
             glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
             glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
-        } else {
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X, 0, GL_RGB, width, width, 0, GL_RGB, GL_UNSIGNED_BYTE, rightFaceBuffer);
+
+            start = textureData + videoFrameWidth * height * 3 + width * 2 * 3;
+            for (int j = 0; j < height; j++) {
+                for (int i = 0; i < width; i++) {
+                    upFaceBuffer[((height - 1 - j)*width + (width - i)) * 3 + 0] = *(start + (i) * 3);
+                    upFaceBuffer[((height - 1 - j)*width + (width - i)) * 3 + 1] = *(start + (i) * 3 + 1);
+                    upFaceBuffer[((height - 1 - j)*width + (width - i)) * 3 + 2] = *(start + (i) * 3 + 2);
+                }
+                start += videoFrameWidth * 3;
+            }
+
+            glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
+            glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_Y, 0, GL_RGB, width, width, 0, GL_RGB, GL_UNSIGNED_BYTE, upFaceBuffer);
+
+        } else if (this->projectionMode == PM_ERP){
             if (this->renderYUV) {
                 unsigned char *yuvPlanes[3];
                 yuvPlanes[0] = textureData;

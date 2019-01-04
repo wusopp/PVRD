@@ -254,8 +254,7 @@ namespace Player {
         bool              renderYUV = true;
         bool              repeatRendering = false;
         int frameIndex = 0;
-
-
-
+        uint8_t * rightFaceBuffer = NULL;
+        uint8_t * upFaceBuffer = NULL;
 	};
 }
