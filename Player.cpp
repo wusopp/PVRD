@@ -1434,11 +1434,11 @@ namespace Player {
 
             glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
             glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
-            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X, 0, GL_RGB, width, width, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_Z, 0, GL_RGB, width, width, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
 
             glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
             glPixelStorei(GL_UNPACK_SKIP_PIXELS, width);
-            glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_X, 0, GL_RGB, width, width, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_Z, 0, GL_RGB, width, width, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
 
             glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
             glPixelStorei(GL_UNPACK_SKIP_PIXELS, width * 2);
@@ -1450,11 +1450,11 @@ namespace Player {
 
             glPixelStorei(GL_UNPACK_SKIP_ROWS, width);
             glPixelStorei(GL_UNPACK_SKIP_PIXELS, width);
-            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_Z, 0, GL_RGB, width, width, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_X, 0, GL_RGB, width, width, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
 
             glPixelStorei(GL_UNPACK_SKIP_ROWS, width);
             glPixelStorei(GL_UNPACK_SKIP_PIXELS, width * 2);
-            glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_Z, 0, GL_RGB, width, width, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X, 0, GL_RGB, width, width, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
         } else if (this->projectionMode == PM_EAC || this->projectionMode == PM_ACP) {
             glBindTexture(GL_TEXTURE_CUBE_MAP, sceneTextureID);
             glPixelStorei(GL_UNPACK_ROW_LENGTH, videoFrameWidth);
