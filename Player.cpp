@@ -619,6 +619,7 @@ namespace Player {
         this->vertexCount = 36;
         float skyboxVertices[] = {
             // positions          
+            // back
             -1.0f,  1.0f, -1.0f,
             -1.0f, -1.0f, -1.0f,
             1.0f, -1.0f, -1.0f,
@@ -626,6 +627,55 @@ namespace Player {
             1.0f,  1.0f, -1.0f,
             -1.0f,  1.0f, -1.0f,
 
+            // Left
+            -1.0f, -1.0f,  1.0f,
+            -1.0f, -1.0f, -1.0f,
+            -1.0f,  1.0f, -1.0f,
+            -1.0f,  1.0f, -1.0f,
+            -1.0f,  1.0f,  1.0f,
+            -1.0f, -1.0f,  1.0f,
+            // Right
+            1.0f, -1.0f, -1.0f,
+            1.0f, -1.0f,  1.0f,
+            1.0f,  1.0f,  1.0f,
+            1.0f,  1.0f,  1.0f,
+            1.0f,  1.0f, -1.0f,
+            1.0f, -1.0f, -1.0f,
+            // Front
+            -1.0f, -1.0f,  1.0f,
+            -1.0f,  1.0f,  1.0f,
+            1.0f,  1.0f,  1.0f,
+            1.0f,  1.0f,  1.0f,
+            1.0f, -1.0f,  1.0f,
+            -1.0f, -1.0f,  1.0f,
+            // Top
+            -1.0f,  1.0f, -1.0f,
+            1.0f,  1.0f, -1.0f,
+            1.0f,  1.0f,  1.0f,
+            1.0f,  1.0f,  1.0f,
+            -1.0f,  1.0f,  1.0f,
+            -1.0f,  1.0f, -1.0f,
+            // Bottom 2 3 7 7 5 2
+            -1.0f, -1.0f, -1.0f,
+            1.0f, -1.0f,  -1.0f,
+            1.0f, -1.0f, 1.0f,
+            1.0f, -1.0f, 1.0f,
+            -1.0f, -1.0f,  1.0f,
+            -1.0f, -1.0f,  -1.0f
+        };
+
+
+        float skyboxTextures[] = {
+            // positions          
+            // back
+            -1.0f,  1.0f, -1.0f,
+            -1.0f, -1.0f, -1.0f,
+            1.0f, -1.0f, -1.0f,
+            1.0f, -1.0f, -1.0f,
+            1.0f,  1.0f, -1.0f,
+            -1.0f,  1.0f, -1.0f,
+
+            // Left
             -1.0f, -1.0f,  1.0f,
             -1.0f, -1.0f, -1.0f,
             -1.0f,  1.0f, -1.0f,
@@ -633,6 +683,7 @@ namespace Player {
             -1.0f,  1.0f,  1.0f,
             -1.0f, -1.0f,  1.0f,
 
+            // Right
             1.0f, -1.0f, -1.0f,
             1.0f, -1.0f,  1.0f,
             1.0f,  1.0f,  1.0f,
@@ -640,6 +691,7 @@ namespace Player {
             1.0f,  1.0f, -1.0f,
             1.0f, -1.0f, -1.0f,
 
+            // Front
             -1.0f, -1.0f,  1.0f,
             -1.0f,  1.0f,  1.0f,
             1.0f,  1.0f,  1.0f,
@@ -647,19 +699,38 @@ namespace Player {
             1.0f, -1.0f,  1.0f,
             -1.0f, -1.0f,  1.0f,
 
-            -1.0f,  1.0f, -1.0f,
-            1.0f,  1.0f, -1.0f,
-            1.0f,  1.0f,  1.0f,
-            1.0f,  1.0f,  1.0f,
+            // Top
             -1.0f,  1.0f,  1.0f,
             -1.0f,  1.0f, -1.0f,
+            1.0f,  1.0f, -1.0f,
+            1.0f,  1.0f, -1.0f,
+            1.0f,  1.0f,  1.0f,
+            -1.0f,  1.0f,  1.0f,
 
+            // Bottom
+            //-1.0f, -1.0f, -1.0f,
+            //-1.0f, -1.0f,  1.0f,
+            //1.0f, -1.0f, -1.0f,
+            //1.0f, -1.0f, -1.0f,
+            //-1.0f, -1.0f,  1.0f,
+            //1.0f, -1.0f,  1.0f
+
+            // 3 7 5 5 2 3
+            //1.0f, -1.0f,  -1.0f,
+            //1.0f, -1.0f, 1.0f,
+            //-1.0f, -1.0f,  1.0f,
+            //-1.0f, -1.0f,  1.0f,
+            //-1.0f, -1.0f, -1.0f,
+            //1.0f, -1.0f,  -1.0f,
+
+            // 5 2 3 3 7 5
+            -1.0f, -1.0f,  1.0f,
             -1.0f, -1.0f, -1.0f,
-            -1.0f, -1.0f,  1.0f,
-            1.0f, -1.0f, -1.0f,
-            1.0f, -1.0f, -1.0f,
-            -1.0f, -1.0f,  1.0f,
-            1.0f, -1.0f,  1.0f
+            1.0f, -1.0f,  -1.0f,
+            1.0f, -1.0f,  -1.0f,
+            1.0f, -1.0f, 1.0f,
+            -1.0f, -1.0f,  1.0f
+
         };
 
         glGenVertexArrays(1, &sceneVAO);
@@ -669,6 +740,11 @@ namespace Player {
         glBindBuffer(GL_ARRAY_BUFFER, sceneVertexBuffer);
         glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxVertices), &skyboxVertices, GL_STATIC_DRAW);
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+
+        glGenBuffers(1, &sceneUVBuffer);
+        glBindBuffer(GL_ARRAY_BUFFER, sceneUVBuffer);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxTextures), &skyboxTextures, GL_STATIC_DRAW);
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
 
         glBindVertexArray(0);
         return true;
@@ -1431,6 +1507,10 @@ namespace Player {
         glEnableVertexAttribArray(0);
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (const void *)0);
 
+        glBindBuffer(GL_ARRAY_BUFFER, sceneUVBuffer);
+        glEnableVertexAttribArray(1);
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, (const void *)0);
+
         glDrawArrays(GL_TRIANGLES, 0, this->vertexCount);
 
         glBindVertexArray(0);
@@ -1585,6 +1665,16 @@ namespace Player {
             glPixelStorei(GL_UNPACK_SKIP_PIXELS, width);
             glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_Z, 0, GL_RGB, width, width, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
 
+
+            glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
+            glPixelStorei(GL_UNPACK_SKIP_PIXELS, width * 2);
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_Y, 0, GL_RGB, width, width, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
+
+
+            glPixelStorei(GL_UNPACK_SKIP_ROWS, width);
+            glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, 0, GL_RGB, width, width, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
+
             glPixelStorei(GL_UNPACK_SKIP_ROWS, width);
             glPixelStorei(GL_UNPACK_SKIP_PIXELS, width);
             glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_X, 0, GL_RGB, width, width, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
@@ -1593,36 +1683,37 @@ namespace Player {
             glPixelStorei(GL_UNPACK_SKIP_PIXELS, width * 2);
             glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X, 0, GL_RGB, width, width, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
 
-            // 2 也就是bottom 这个面需要逆时针旋转90度
-            uint8_t *start = textureData + videoFrameWidth * height * 3;
-            for (int j = 0; j < height; j++) {
-                for (int i = 0; i < width; i++) {
-                    faceBufferOne[((width - 1 - i) * width + j) * 3 + 0] = *(start + i * 3 + 0);
-                    faceBufferOne[((width - 1 - i) * width + j) * 3 + 1] = *(start + i * 3 + 1);
-                    faceBufferOne[((width - 1 - i) * width + j) * 3 + 2] = *(start + i * 3 + 2);
-                }
-                start += videoFrameWidth * 3;
-            }
-            glPixelStorei(GL_UNPACK_ROW_LENGTH, width);
-            glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
-            glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
-            glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, 0, GL_RGB, width, width, 0, GL_RGB, GL_UNSIGNED_BYTE, faceBufferOne);
+
+            //// 2 也就是bottom 这个面需要逆时针旋转90度
+            //uint8_t *start = textureData + videoFrameWidth * height * 3;
+            //for (int j = 0; j < height; j++) {
+            //    for (int i = 0; i < width; i++) {
+            //        faceBufferOne[((width - 1 - i) * width + j) * 3 + 0] = *(start + i * 3 + 0);
+            //        faceBufferOne[((width - 1 - i) * width + j) * 3 + 1] = *(start + i * 3 + 1);
+            //        faceBufferOne[((width - 1 - i) * width + j) * 3 + 2] = *(start + i * 3 + 2);
+            //    }
+            //    start += videoFrameWidth * 3;
+            //}
+            //glPixelStorei(GL_UNPACK_ROW_LENGTH, width);
+            //glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
+            //glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
+            //glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, 0, GL_RGB, width, width, 0, GL_RGB, GL_UNSIGNED_BYTE, faceBufferOne);
 
 
-            // 0 也就是top 这个面需要顺时针旋转90度
-            start = textureData + width * 2 * 3;
-            for (int j = 0; j < height; j++) {
-                for (int i = 0; i < width; i++) {
-                    faceBufferTwo[(i*width + height - 1 - j) * 3 + 0] = *(start + i * 3 + 0);
-                    faceBufferTwo[(i*width + height - 1 - j) * 3 + 1] = *(start + i * 3 + 1);
-                    faceBufferTwo[(i*width + height - 1 - j) * 3 + 2] = *(start + i * 3 + 2);
-                }
-                start += videoFrameWidth * 3;
-            }
-            glPixelStorei(GL_UNPACK_ROW_LENGTH, width);
-            glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
-            glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
-            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_Y, 0, GL_RGB, width, width, 0, GL_RGB, GL_UNSIGNED_BYTE, faceBufferTwo);
+            //// 0 也就是top 这个面需要顺时针旋转90度
+            //start = textureData + width * 2 * 3;
+            //for (int j = 0; j < height; j++) {
+            //    for (int i = 0; i < width; i++) {
+            //        faceBufferTwo[(i*width + height - 1 - j) * 3 + 0] = *(start + i * 3 + 0);
+            //        faceBufferTwo[(i*width + height - 1 - j) * 3 + 1] = *(start + i * 3 + 1);
+            //        faceBufferTwo[(i*width + height - 1 - j) * 3 + 2] = *(start + i * 3 + 2);
+            //    }
+            //    start += videoFrameWidth * 3;
+            //}
+            //glPixelStorei(GL_UNPACK_ROW_LENGTH, width);
+            //glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
+            //glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
+            //glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_Y, 0, GL_RGB, width, width, 0, GL_RGB, GL_UNSIGNED_BYTE, faceBufferTwo);
 
 
         } else if (this->projectionMode == PM_EAC || this->projectionMode == PM_ACP) {
@@ -1859,7 +1950,7 @@ namespace Player {
 
         char *VERTEX_SHADER = NULL, *FRAGMENT_SHADER = NULL;
 
-        if (this->projectionMode == PM_EAC ) {
+        if (this->projectionMode == PM_EAC || this->projectionMode == PM_CUBEMAP) {
             VERTEX_SHADER =
                 "#version 410 core\n"
                 "uniform mat4 matrix;\n"
@@ -1877,7 +1968,7 @@ namespace Player {
                 "void main() {\n"
                 "   gl_FragColor = texture(mytexture, TexCoords);\n"
                 "}\n";
-        } else if (this->projectionMode == PM_CUBEMAP || this->projectionMode == PM_ACP) {
+        } else if (this->projectionMode == PM_ACP) {
             VERTEX_SHADER =
                 "#version 410 core\n"
                 "uniform mat4 matrix;\n"
