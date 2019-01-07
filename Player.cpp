@@ -91,16 +91,10 @@ namespace Player {
 			delete pNVDecoder;
 			pNVDecoder = NULL;
 		}
-        if (rightFaceBuffer) {
-            free(rightFaceBuffer);
-            rightFaceBuffer = NULL;
+        if (faceBufferOne) {
+            free(faceBufferOne);
+            faceBufferOne = NULL;
         }
-
-        // 可能造成内存泄漏
-        //if (upFaceBuffer) {
-        //    free(upFaceBuffer);
-        //    upFaceBuffer = NULL;
-        //}
 
 		destroyGL();
 		destroyCodec();
@@ -171,11 +165,10 @@ namespace Player {
                 }
             }
 
-            if (this->projectionMode == PM_EAC || this->projectionMode == PM_ACP) {
+            if (this->projectionMode == PM_EAC || this->projectionMode == PM_ACP || this->projectionMode == PM_CUBEMAP) {
                 int width = this->videoFrameWidth / 3;
-                this->rightFaceBuffer = (uint8_t *)malloc(sizeof(uint8_t)*width*width * 3);
-                this->upFaceBuffer = (uint8_t *)malloc(sizeof(uint8_t)*width*width * 3);
-
+                this->faceBufferOne = (uint8_t *)malloc(sizeof(uint8_t)*width*width * 3);
+                this->faceBufferTwo = (uint8_t *)malloc(sizeof(uint8_t)*width*width * 3);
             }
         }
     }
@@ -251,8 +244,8 @@ namespace Player {
 
 		return true;
 	}
-	bool Player::openVideo()
-{
+
+	bool Player::openVideo() {
  		assert(this->videoFileType != VFT_NOT_SPECIFIED && this->decodeType != DT_NOT_SPECIFIED && this->drawMode != DM_NOT_SPECIFIED);
 
 		if (videoFileType == VFT_Encoded && decodeType == DT_SOFTWARE) {
@@ -477,15 +470,150 @@ namespace Player {
 		} else if (this->projectionMode == PM_CPP) {
 			setupCppEqualDistanceCoordinates();
 			result = true;
-        } else if (this->projectionMode == PM_CUBEMAP || this->projectionMode == PM_EAC || this->projectionMode == PM_ACP) {
+        } else if (this->projectionMode == PM_CUBEMAP || this->projectionMode == PM_ACP) {
             setupCubeMapCoordinates();
             result = true;
         } else if (this->projectionMode == PM_TSP) {
             setupTSPCoordinates();
             result = true;
+        } else if (this->projectionMode == PM_EAC) {
+            setupEACCoordinates();
+            result = true;
         }
 		return result;
 	}
+
+
+    bool Player::setupEACCoordinates() {
+        this->vertexCount = 36;
+        float skyboxVertices[] = {
+            // positions          
+
+            // back
+            -1.0f,  1.0f, -1.0f,
+            -1.0f, -1.0f, -1.0f,
+            1.0f, -1.0f, -1.0f,
+            1.0f, -1.0f, -1.0f,
+            1.0f,  1.0f, -1.0f,
+            -1.0f,  1.0f, -1.0f,
+
+            // Left
+            -1.0f, -1.0f,  1.0f,
+            -1.0f, -1.0f, -1.0f,
+            -1.0f,  1.0f, -1.0f,
+            -1.0f,  1.0f, -1.0f,
+            -1.0f,  1.0f,  1.0f,
+            -1.0f, -1.0f,  1.0f,
+            // Right
+            1.0f, -1.0f, -1.0f,
+            1.0f, -1.0f,  1.0f,
+            1.0f,  1.0f,  1.0f,
+            1.0f,  1.0f,  1.0f,
+            1.0f,  1.0f, -1.0f,
+            1.0f, -1.0f, -1.0f,
+            // Front
+            -1.0f, -1.0f,  1.0f,
+            -1.0f,  1.0f,  1.0f,
+            1.0f,  1.0f,  1.0f,
+            1.0f,  1.0f,  1.0f,
+            1.0f, -1.0f,  1.0f,
+            -1.0f, -1.0f,  1.0f,
+            // Top
+            -1.0f,  1.0f, -1.0f,
+            1.0f,  1.0f, -1.0f,
+            1.0f,  1.0f,  1.0f,
+            1.0f,  1.0f,  1.0f,
+            -1.0f,  1.0f,  1.0f,
+            -1.0f,  1.0f, -1.0f,
+            // Bottom
+            -1.0f, -1.0f, -1.0f,
+            -1.0f, -1.0f,  1.0f,
+            1.0f, -1.0f, -1.0f,
+            1.0f, -1.0f, -1.0f,
+            -1.0f, -1.0f,  1.0f,
+            1.0f, -1.0f,  1.0f
+        };
+
+        float skyboxTextures[] = {
+            // positions          
+            // Back
+            -1.0f,  1.0f, -1.0f,
+            -1.0f, -1.0f, -1.0f,
+            1.0f, -1.0f, -1.0f,
+            1.0f, -1.0f, -1.0f,
+            1.0f,  1.0f, -1.0f,
+            -1.0f,  1.0f, -1.0f,
+
+            // Left
+            -1.0f, -1.0f,  1.0f,
+            -1.0f, -1.0f, -1.0f,
+            -1.0f,  1.0f, -1.0f,
+            -1.0f,  1.0f, -1.0f,
+            -1.0f,  1.0f,  1.0f,
+            -1.0f, -1.0f,  1.0f,
+
+            // Right
+            //1.0f, -1.0f, -1.0f,
+            //1.0f, -1.0f,  1.0f,
+            //1.0f,  1.0f,  1.0f,
+            //1.0f,  1.0f,  1.0f,
+            //1.0f,  1.0f, -1.0f,
+            //1.0f, -1.0f, -1.0f,
+
+            1.0f, -1.0f,  1.0f,
+            1.0f,  1.0f,  1.0f,
+            1.0f,  1.0f, -1.0f,
+            1.0f,  1.0f, -1.0f,
+            1.0f, -1.0f, -1.0f,
+            1.0f, -1.0f,  1.0f,
+
+            // Front
+            -1.0f, -1.0f,  1.0f,
+            -1.0f,  1.0f,  1.0f,
+            1.0f,  1.0f,  1.0f,
+            1.0f,  1.0f,  1.0f,
+            1.0f, -1.0f,  1.0f,
+            -1.0f, -1.0f,  1.0f,
+
+            // Top
+            //-1.0f,  1.0f,  1.0f,
+            //-1.0f,  1.0f, -1.0f,
+            //1.0f,  1.0f, -1.0f,
+            //1.0f,  1.0f, -1.0f,
+            //1.0f,  1.0f,  1.0f,
+            //-1.0f,  1.0f,  1.0f,
+            1.0f,  1.0f,  1.0f,
+            -1.0f,  1.0f,  1.0f,
+            -1.0f,  1.0f,  -1.0f,
+            -1.0f,  1.0f,  -1.0f,
+            1.0f,  1.0f, -1.0f,
+            1.0f,  1.0f,  1.0f,
+
+            // Bottom
+            -1.0f, -1.0f, -1.0f,
+            -1.0f, -1.0f,  1.0f,
+            1.0f, -1.0f, -1.0f,
+            1.0f, -1.0f, -1.0f,
+            -1.0f, -1.0f,  1.0f,
+            1.0f, -1.0f,  1.0f
+        };
+
+        glGenVertexArrays(1, &sceneVAO);
+        glBindVertexArray(sceneVAO);
+
+        glGenBuffers(1, &sceneVertexBuffer);
+        glBindBuffer(GL_ARRAY_BUFFER, sceneVertexBuffer);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxVertices), &skyboxVertices, GL_STATIC_DRAW);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+
+        glGenBuffers(1, &sceneUVBuffer);
+        glBindBuffer(GL_ARRAY_BUFFER, sceneUVBuffer);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxTextures), &skyboxTextures, GL_STATIC_DRAW);
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
+
+        glBindVertexArray(0);
+        return true;
+    }
 
     bool Player::setupCubeMapCoordinates() {
         this->vertexCount = 36;
@@ -664,7 +792,7 @@ namespace Player {
 
         float x, y, z, u, v;
 
-        int horizontalPatch = 10;
+        int horizontalPatch = 20;
         int verticalPatch = horizontalPatch;
 
 
@@ -1218,29 +1346,21 @@ namespace Player {
 			} else {
 				drawFrameERPWithoutIndex();
 			}
-
 		} else if (this->projectionMode == PM_CPP_OBSOLETE) {
-
 			if (drawMode == DM_USE_INDEX) {
 				drawFrameCPPWithIndex_Obsolete();
 			} else {
 				drawFrameCPPWithoutIndex_Obsolete();
 			}
-
 		} else if (this->projectionMode == PM_CPP) {
-
 			drawFrameCppEqualDistance();
-
-        } else if (this->projectionMode == PM_CUBEMAP || this->projectionMode == PM_EAC) {
-
+        } else if (this->projectionMode == PM_CUBEMAP) {
             drawFrameCubeMap();
-
         } else if (this->projectionMode == PM_TSP) {
-            
             drawFrameTSP();
-
+        } else if (this->projectionMode == PM_EAC) {
+            drawFrameEAC();
         }
-
 
         SDL_GL_SwapWindow(pWindow);
 
@@ -1265,6 +1385,30 @@ namespace Player {
         glBindBuffer(GL_ARRAY_BUFFER, sceneUVBuffer);
         glEnableVertexAttribArray(1);
         glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, (const void *)0);
+
+        glDrawArrays(GL_TRIANGLES, 0, vertexCount);
+
+        glBindVertexArray(0);
+        glCheckError();
+    }
+
+    void Player::drawFrameEAC() {
+        glViewport(0, 0, windowWidth, windowHeight);
+        glDisable(GL_DEPTH_TEST);
+        glCheckError();
+        computeMVPMatrix();
+        glUseProgram(sceneProgramID);
+
+        glUniformMatrix4fv(sceneMVPMatrixPointer, 1, GL_FALSE, &mvpMatrix[0][0]);
+        glBindVertexArray(sceneVAO);
+
+        glBindBuffer(GL_ARRAY_BUFFER, sceneVertexBuffer);
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (const void *)0);
+
+        glBindBuffer(GL_ARRAY_BUFFER, sceneUVBuffer);
+        glEnableVertexAttribArray(1);
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, (const void *)0);
 
         glDrawArrays(GL_TRIANGLES, 0, vertexCount);
 
@@ -1424,13 +1568,14 @@ namespace Player {
 	bool Player::setupTextureData(unsigned char *textureData) {
 		static bool firstTime = true;
 		glUseProgram(sceneProgramID);
-
+        glCheckError();
         if (this->projectionMode == PM_CUBEMAP) {
             glBindTexture(GL_TEXTURE_CUBE_MAP, sceneTextureID);
             glPixelStorei(GL_UNPACK_ROW_LENGTH, videoFrameWidth);
 
             assert(videoFrameWidth / 3 == videoFrameHeight / 2);
             int width = videoFrameWidth / 3;     
+            int height = width;
 
             glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
             glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
@@ -1440,14 +1585,6 @@ namespace Player {
             glPixelStorei(GL_UNPACK_SKIP_PIXELS, width);
             glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_Z, 0, GL_RGB, width, width, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
 
-            glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
-            glPixelStorei(GL_UNPACK_SKIP_PIXELS, width * 2);
-            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_Y, 0, GL_RGB, width, width, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
-
-            glPixelStorei(GL_UNPACK_SKIP_ROWS, width);
-            glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
-            glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, 0, GL_RGB, width, width, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
-
             glPixelStorei(GL_UNPACK_SKIP_ROWS, width);
             glPixelStorei(GL_UNPACK_SKIP_PIXELS, width);
             glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_X, 0, GL_RGB, width, width, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
@@ -1455,6 +1592,39 @@ namespace Player {
             glPixelStorei(GL_UNPACK_SKIP_ROWS, width);
             glPixelStorei(GL_UNPACK_SKIP_PIXELS, width * 2);
             glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X, 0, GL_RGB, width, width, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
+
+            // 2 也就是bottom 这个面需要逆时针旋转90度
+            uint8_t *start = textureData + videoFrameWidth * height * 3;
+            for (int j = 0; j < height; j++) {
+                for (int i = 0; i < width; i++) {
+                    faceBufferOne[((width - 1 - i) * width + j) * 3 + 0] = *(start + i * 3 + 0);
+                    faceBufferOne[((width - 1 - i) * width + j) * 3 + 1] = *(start + i * 3 + 1);
+                    faceBufferOne[((width - 1 - i) * width + j) * 3 + 2] = *(start + i * 3 + 2);
+                }
+                start += videoFrameWidth * 3;
+            }
+            glPixelStorei(GL_UNPACK_ROW_LENGTH, width);
+            glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
+            glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, 0, GL_RGB, width, width, 0, GL_RGB, GL_UNSIGNED_BYTE, faceBufferOne);
+
+
+            // 0 也就是top 这个面需要顺时针旋转90度
+            start = textureData + width * 2 * 3;
+            for (int j = 0; j < height; j++) {
+                for (int i = 0; i < width; i++) {
+                    faceBufferTwo[(i*width + height - 1 - j) * 3 + 0] = *(start + i * 3 + 0);
+                    faceBufferTwo[(i*width + height - 1 - j) * 3 + 1] = *(start + i * 3 + 1);
+                    faceBufferTwo[(i*width + height - 1 - j) * 3 + 2] = *(start + i * 3 + 2);
+                }
+                start += videoFrameWidth * 3;
+            }
+            glPixelStorei(GL_UNPACK_ROW_LENGTH, width);
+            glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
+            glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_Y, 0, GL_RGB, width, width, 0, GL_RGB, GL_UNSIGNED_BYTE, faceBufferTwo);
+
+
         } else if (this->projectionMode == PM_EAC || this->projectionMode == PM_ACP) {
             glBindTexture(GL_TEXTURE_CUBE_MAP, sceneTextureID);
             glPixelStorei(GL_UNPACK_ROW_LENGTH, videoFrameWidth);
@@ -1478,13 +1648,22 @@ namespace Player {
             glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
             glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, 0, GL_RGB, width, width, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
 
+            glPixelStorei(GL_UNPACK_SKIP_ROWS, width);
+            glPixelStorei(GL_UNPACK_SKIP_PIXELS, width);
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X, 0, GL_RGB,width,width,0,GL_RGB,GL_UNSIGNED_BYTE, textureData);
+
+            glPixelStorei(GL_UNPACK_SKIP_ROWS, width);
+            glPixelStorei(GL_UNPACK_SKIP_PIXELS, width * 2);
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_Y, 0, GL_RGB, width, width, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
+            
+            /*
             uint8_t *start = textureData + videoFrameWidth * height * 3 + width * 3;
 
             for (int j = 0; j < height; j++) {
                 for (int i = 0; i < width; i++) {
-                    rightFaceBuffer[((width - 1 - i) * width + j) * 3 + 0] = *(start + i * 3 + 0);
-                    rightFaceBuffer[((width - 1 - i) * width + j) * 3 + 1] = *(start + i * 3 + 1);
-                    rightFaceBuffer[((width - 1 - i) * width + j) * 3 + 2] = *(start + i * 3 + 2);
+                    faceBufferOne[((width - 1 - i) * width + j) * 3 + 0] = *(start + i * 3 + 0);
+                    faceBufferOne[((width - 1 - i) * width + j) * 3 + 1] = *(start + i * 3 + 1);
+                    faceBufferOne[((width - 1 - i) * width + j) * 3 + 2] = *(start + i * 3 + 2);
                 }
                 start += videoFrameWidth * 3;
             }
@@ -1493,22 +1672,22 @@ namespace Player {
 
             glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
             glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
-            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X, 0, GL_RGB, width, width, 0, GL_RGB, GL_UNSIGNED_BYTE, rightFaceBuffer);
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X, 0, GL_RGB, width, width, 0, GL_RGB, GL_UNSIGNED_BYTE, faceBufferOne);
 
             start = textureData + videoFrameWidth * height * 3 + width * 2 * 3;
             for (int j = 0; j < height; j++) {
                 for (int i = 0; i < width; i++) {
-                    upFaceBuffer[((height - 1 - j)*width + (width - i)) * 3 + 0] = *(start + (i) * 3);
-                    upFaceBuffer[((height - 1 - j)*width + (width - i)) * 3 + 1] = *(start + (i) * 3 + 1);
-                    upFaceBuffer[((height - 1 - j)*width + (width - i)) * 3 + 2] = *(start + (i) * 3 + 2);
+                    faceBufferTwo[((height - 1 - j)*width + (width - i)) * 3 + 0] = *(start + (i) * 3);
+                    faceBufferTwo[((height - 1 - j)*width + (width - i)) * 3 + 1] = *(start + (i) * 3 + 1);
+                    faceBufferTwo[((height - 1 - j)*width + (width - i)) * 3 + 2] = *(start + (i) * 3 + 2);
                 }
                 start += videoFrameWidth * 3;
             }
 
             glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
             glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
-            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_Y, 0, GL_RGB, width, width, 0, GL_RGB, GL_UNSIGNED_BYTE, upFaceBuffer);
-
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_Y, 0, GL_RGB, width, width, 0, GL_RGB, GL_UNSIGNED_BYTE, faceBufferTwo);
+            */
         } else if (this->projectionMode == PM_ERP){
             if (this->renderYUV) {
                 unsigned char *yuvPlanes[3];
@@ -1543,6 +1722,7 @@ namespace Player {
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, videoFrameWidth, videoFrameHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
         }
 
+        glCheckError();
 		return true;
 	}
 
@@ -1679,7 +1859,25 @@ namespace Player {
 
         char *VERTEX_SHADER = NULL, *FRAGMENT_SHADER = NULL;
 
-        if (this->projectionMode == PM_CUBEMAP || this->projectionMode == PM_EAC || this->projectionMode == PM_ACP) {
+        if (this->projectionMode == PM_EAC ) {
+            VERTEX_SHADER =
+                "#version 410 core\n"
+                "uniform mat4 matrix;\n"
+                "out vec3 TexCoords;\n"
+                "layout(location = 0) in vec4 position;\n"
+                "layout(location = 1) in vec3 coords;\n"
+                "void main() {\n"
+                "   TexCoords = coords;\n"
+                "   gl_Position = matrix * position;\n"
+                "}\n";
+            FRAGMENT_SHADER =
+                "#version 410 core\n"
+                "varying vec3 TexCoords;\n"
+                "uniform samplerCube mytexture;\n"
+                "void main() {\n"
+                "   gl_FragColor = texture(mytexture, TexCoords);\n"
+                "}\n";
+        } else if (this->projectionMode == PM_CUBEMAP || this->projectionMode == PM_ACP) {
             VERTEX_SHADER =
                 "#version 410 core\n"
                 "uniform mat4 matrix;\n"
@@ -1688,8 +1886,7 @@ namespace Player {
                 "void main() {\n"
                 "   TexCoords = position.xyz;\n"
                 "   gl_Position = matrix * position;\n"
-                "}\n";
-            // texture(mytexture, TexCoords)
+                "}\n"; 
             FRAGMENT_SHADER =
                 "#version 410 core\n"
                 "varying vec3 TexCoords;\n"
@@ -1754,8 +1951,21 @@ namespace Player {
                 "out vec4 outputColor;\n"
                 "void main() {\n"
                 "	outputColor = texture(mytexture,uvCoordsOut);\n"
-                //"   outputColor = vec4(uvCoordsOut.x, uvCoordsOut.y, 1.0, 1.0);\n"
                 "}\n";
+            //FRAGMENT_SHADER =
+            //    "#version 410 core\n"
+            //    "uniform sampler2D mytexture;\n"
+            //    "in vec2 uvCoordsOut;\n"
+            //    "out vec4 outputColor;\n"
+            //    "void main() {\n"
+            //    "   vec2 coord = uvCoordsOut;\n"
+            //    "   float sin_fac = sin(90);\n"
+            //    "   float cos_fac = cos(90);\n"
+            //    "   if (u < 0.5) {\n"
+            //    "   coord = (coord - 0.5*vec2(1.0,1.0))*mat2(cos_fac,sin_fac,-sin_fac,cos_fac);\n"
+            //    "   coord += 0.5;\n}\n"
+            //    "	outputColor = texture(mytexture,coord);\n"
+            //    "}\n";
         }
 
 		addShader(GL_VERTEX_SHADER, VERTEX_SHADER, sceneProgramID);
@@ -1782,6 +1992,7 @@ namespace Player {
 	*/
 	bool Player::setupTexture() {
 		glUseProgram(sceneProgramID);
+        glCheckError();
         if (this->projectionMode == PM_CUBEMAP || this->projectionMode == PM_EAC || this->projectionMode == PM_ACP) {
             glGenTextures(1, &sceneTextureID);
 
@@ -2467,6 +2678,15 @@ namespace Player {
 		case PM_ERP:
 			projectionMode = "Equirectangular Projection";
 			break;
+        case PM_CUBEMAP:
+            projectionMode = "Cubemap";
+            break;
+        case PM_EAC:
+            projectionMode = "EAC";
+            break;
+        case PM_TSP:
+            projectionMode = "TSP";
+            break;
 		default:
 			projectionMode = " ";
 			break;

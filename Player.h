@@ -153,6 +153,11 @@ namespace Player {
         }
         void drawFrameTSP();
 
+
+    private:
+        bool setupEACCoordinates();
+        void drawFrameEAC();
+
     private:
         bool setupCubeMapCoordinates();
         void drawFrameCubeMap();
@@ -267,7 +272,7 @@ namespace Player {
         bool              renderYUV = true;
         bool              repeatRendering = false;
         int frameIndex = 0;
-        uint8_t * rightFaceBuffer = NULL;
-        uint8_t * upFaceBuffer = NULL;
+        uint8_t * faceBufferOne = NULL;
+        uint8_t * faceBufferTwo = NULL;
 	};
 }
